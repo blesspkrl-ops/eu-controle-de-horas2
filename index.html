@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard de Serviço & Saldo</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #38bdf8;
+            --primary-hover: #0ea5e9;
+            --danger: #f43f5e;
+            --danger-hover: #e11d48;
+            --success: #34d399;
+            --border: #334155;
+        }
+
+        /* Correção para o fundo preto cobrir o topo do iPhone (onde fica a bateria) */
+        html, body {
+            background-color: var(--bg-color);
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px 10px; 
+            color: var(--text-main); 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: var(--card-bg); 
+            padding: 20px 15px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+            border: 1px solid var(--border);
+            box-sizing: border-box;
+        }
+
+        .tabs { 
+            display: flex; 
+            gap: 5px;
+            border-bottom: 2px solid var(--border); 
+            margin-bottom: 20px; 
+        }
+
+        .tab-btn { 
+            flex: 1;
+            padding: 12px 10px; 
+            border: none; 
+            background: none; 
+            font-size: 14px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            color: var(--text-muted); 
+            transition: all 0.2s ease;
+            border-radius: 6px 6px 0 0;
+            text-align: center;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent; /* Remove o flash quadrado ao clicar no iPhone */
+        }
+
+        .tab-btn.active { 
+            color: var(--primary); 
+            border-bottom: 3px solid var(--primary); 
+            background-color: rgba(56, 189, 248, 0.1);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        h2 { font-size: 20px; margin-top: 0; margin-bottom: 15px; color: var(--text-main); }
+        h3 { font-size: 16px; margin-top: 25px; color: var(--primary); }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-direction: column; /* No celular fica um embaixo do outro para não esmagar */
+            margin-bottom: 15px;
+        }
+
+        /* Se a tela for maior (computador), ele volta a ficar lado a lado */
+        @media (min-width: 600px) {
+            .form-row { flex-direction: row; }
+        }
+
+        .form-group { 
+            flex: 1;
+        }
+
+        label { 
+            display: block; 
+            margin-bottom: 6px; 
+            font-size: 13px;
+            color: var(--text-muted); 
+        }
+
+        /* Ajuste crítico para os inputs no iOS */
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            background-color: var(--bg-color);
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            color: var(--text-main);
+            font-size: 16px; /* 16px impede o iPhone de dar aquele "zoom forçado" na tela ao clicar */
+            transition: border 0.2s;
+            -webkit-appearance: none; /* Remove o design padrão do iOS */
+            appearance: none;
+        }
+
+        /* Garante que o input de data apareça o texto claro no iPhone */
+        input[type="date"] {
+            color-scheme: dark; 
+            min-height: 45px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* Ajuste para os botões não ficarem cinzas ou redondos no iOS */
+        button { 
+            background-color: var(--primary); 
+            color: #0f172a; 
+            padding: 12px 18px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 15px; 
+            font-weight: bold; 
+            -webkit-appearance: none;
+            appearance: none;
+            transition: background 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+        
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-danger:hover { background-color: var(--danger-hover); }
+
+        .btn-delete {
+            background-color: transparent;
+            color: var(--danger);
+            padding: 6px 12px;
+            font-size: 14px;
+            border: 1px solid var(--danger);
+            border-radius: 6px;
+            min-height: 35px;
+        }
+
+        .saldo-box { 
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            font-size: 16px; 
+            border-left: 5px solid var(--danger);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        @media (min-width: 400px) {
+            .saldo-box { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
+
+        .saldo-valor {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--danger);
+        }
+
+        /* Torna as tabelas roláveis para os lados no celular se os dados forem compridos */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Rolagem macia no iPhone */
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background-color: rgba(0,0,0,0.1);
+        }
+
+        th, td { 
+            padding: 10px 12px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        th { 
+            background-color: rgba(0, 0, 0, 0.3); 
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background-color: rgba(255,255,255,0.02);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('carga-horaria')">⏱️ Horas</button>
+        <button class="tab-btn" onclick="switchTab('salario-saldo')">💰 Salário</button>
+    </div>
+
+    <div id="carga-horaria" class="tab-content active">
+        <h2>Lançar Horas de Serviço</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Data de Trabalho:</label>
+                <input type="date" id="data">
+            </div>
+            <div class="form-group">
+                <label>Horas Trabalhadas:</label>
+                <input type="number" id="horas" inputmode="decimal" step="0.1" placeholder="Ex: 8 ou 5.5">
+            </div>
+            <div class="form-group">
+                <label>Valor por Hora (R$):</label>
+                <input type="number" id="valorHora" inputmode="decimal" step="0.01" value="15.00">
+            </div>
+        </div>
+        <div class="btn-group">
+            <button onclick="lancarHoras()" style="flex: 1;">➕ Lançar</button>
+            <button class="btn-danger" onclick="fecharMes()" style="flex: 1;">🔒 Fechar Mês</button>
+        </div>
+
+        <h3>Histórico do Período Atual</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Horas</th>
+                        <th>Valor/H</th>
+                        <th>Total</th>
+                        <th style="width: 50px; text-align: center;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaHoras"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="salario-saldo" class="tab-content">
+        <h2>Controle de Saldo Devedor</h2>
+        <div class="saldo-box">
+            <span>A Empresa te deve:</span>
+            <span id="saldoTotal" class="saldo-valor">R$ 0,00</span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Registrar Pagamento Recebido (R$):</label>
+                <input type="number" id="valorPago" inputmode="decimal" step="0.01" placeholder="Quanto você recebeu">
+            </div>
+            <button onclick="registrarPagamento()" style="width: 100%;">💸 Confirmar Recebimento</button>
+        </div>
+
+        <h3>Extrato de Movimentações</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th style="width: 50px; text-align: center;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaSaldo"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
