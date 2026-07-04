@@ -1,12 +1,18 @@
-// Carrega os dados salvos ou cria uma estrutura vazia
 let dados = JSON.parse(localStorage.getItem('dados_sistema')) || {
     saldoPendente: 0,
     listaHoras: [],
     listaSaldo: []
 };
 
-// Define a data de hoje automaticamente
-document.getElementById('data').valueAsDate = new Date();
+const VALOR_HORA_FIXO = 7.50;
+
+const hoje = new Date();
+document.getElementById('data').valueAsDate = hoje;
+
+const mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
+const anoAtual = String(hoje.getFullYear());
+document.getElementById('filtroMes').value = mesAtual;
+document.getElementById('filtroAno').value = anoAtual;
 
 function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -20,19 +26,22 @@ function switchTab(tabId) {
 function lancarHoras() {
     const dataInput = document.getElementById('data').value;
     const horas = parseFloat(document.getElementById('horas').value);
-    const valorHora = parseFloat(document.getElementById('valorHora').value);
 
-    if (!dataInput || isNaN(horas) || isNaN(valorHora)) {
-        alert("Por favor, preencha todos os campos corretamente!");
+    if (!dataInput || isNaN(horas)) {
+        alert("Por favor, informe a quantidade de horas!");
         return;
     }
 
+    const partesData = dataInput.split('-'); 
+
     const novoLancamento = {
-        id: Date.now(), // ID único para conseguir deletar depois
-        data: dataInput.split('-').reverse().join('/'),
+        id: Date.now(),
+        data: `${partesData[2]}/${partesData[1]}/${partesData[0]}`,
+        mes: partesData[1],
+        ano: partesData[0],
         horas: horas,
-        valorHora: valorHora,
-        total: horas * valorHora
+        valorHora: VALOR_HORA_FIXO,
+        total: horas * VALOR_HORA_FIXO
     };
 
     dados.listaHoras.push(novoLancamento);
@@ -42,7 +51,6 @@ function lancarHoras() {
     document.getElementById('horas').value = '';
 }
 
-// EXCLUIR HORA LANÇADA ERRADA
 function excluirHora(id) {
     if (confirm("Tem certeza que deseja apagar este lançamento de horas?")) {
         dados.listaHoras = dados.listaHoras.filter(item => item.id !== id);
@@ -53,35 +61,45 @@ function excluirHora(id) {
 
 // FECHAR MÊS
 function fecharMes() {
-    if (dados.listaHoras.length === 0) {
-        alert("Não há horas registradas para fechar o mês!");
+    const mesSelecionado = document.getElementById('filtroMes').value;
+    const anoSelecionado = document.getElementById('filtroAno').value;
+    const nomeMes = document.getElementById('filtroMes').options[document.getElementById('filtroMes').selectedIndex].text;
+
+    const horasDoMes = dados.listaHoras.filter(h => h.mes === mesSelecionado && h.ano === anoSelecionado);
+
+    if (horasDoMes.length === 0) {
+        alert(`Não há horas registradas em ${nomeMes}/${anoSelecionado} para fechar!`);
         return;
     }
 
-    const totalTrabalhado = dados.listaHoras.reduce((sum, item) => sum + item.total, 0);
+    const totalTrabalhado = horasDoMes.reduce((sum, item) => sum + item.total, 0);
     dados.saldoPendente += totalTrabalhado;
 
     dados.listaSaldo.push({
         id: Date.now(),
         data: new Date().toLocaleDateString('pt-BR'),
-        descricao: `Fechamento de Período (${dados.listaHoras.length} dias)`,
+        mes: mesSelecionado,
+        ano: anoSelecionado,
+        descricao: `Fechamento (${nomeMes})`,
         valor: totalTrabalhado,
         tipo: 'fechamento'
     });
 
-    dados.listaHoras = []; // Limpa a tabela corrente
+    dados.listaHoras = dados.listaHoras.filter(h => !(h.mes === mesSelecionado && h.ano === anoSelecionado));
 
     salvarDados();
     atualizarTelas();
-    alert(`Período fechado! R$ ${totalTrabalhado.toFixed(2)} enviados para a aba Salário.`);
+    alert(`Período de ${nomeMes} fechado! R$ ${totalTrabalhado.toFixed(2)} enviados.`);
 }
 
 // REGISTRAR PAGAMENTO
 function registrarPagamento() {
     const valorPago = parseFloat(document.getElementById('valorPago').value);
+    const mesSelecionado = document.getElementById('filtroMes').value;
+    const anoSelecionado = document.getElementById('filtroAno').value;
 
     if (isNaN(valorPago) || valorPago <= 0) {
-        alert("Digite um valor válido para o pagamento!");
+        alert("Digite um valor válido!");
         return;
     }
 
@@ -90,7 +108,9 @@ function registrarPagamento() {
     dados.listaSaldo.push({
         id: Date.now(),
         data: new Date().toLocaleDateString('pt-BR'),
-        descricao: "Pagamento Recebido (Empresa pagou)",
+        mes: mesSelecionado,
+        ano: anoSelecionado,
+        descricao: "Pagamento Recebido",
         valor: -valorPago,
         tipo: 'pagamento'
     });
@@ -100,14 +120,12 @@ function registrarPagamento() {
     document.getElementById('valorPago').value = '';
 }
 
-// EXCLUIR HISTÓRICO DE SALDO OU PAGAMENTO
 function excluirSaldo(id, valor, tipo) {
-    if (confirm("Atenção: Excluir este registro vai alterar o saldo total da empresa. Deseja continuar?")) {
-        // Desfaz o impacto que aquele item teve no saldo principal antes de deletar
+    if (confirm("Atenção: Excluir este registro vai alterar o saldo total. Deseja continuar?")) {
         if (tipo === 'fechamento') {
-            dados.saldoPendente -= valor; // Se era uma entrada que sumiu, diminui o saldo
+            dados.saldoPendente -= valor; 
         } else if (tipo === 'pagamento') {
-            dados.saldoPendente -= valor; // Se era um pagamento (negativo), tirar ele soma de volta
+            dados.saldoPendente -= valor; 
         }
 
         dados.listaSaldo = dados.listaSaldo.filter(item => item.id !== id);
@@ -116,47 +134,75 @@ function excluirSaldo(id, valor, tipo) {
     }
 }
 
-// ATUALIZAR INTERFACE
-function atualizarTelas() {
-    // Atualiza visor principal
-    document.getElementById('saldoTotal').innerText = `R$ ${dados.saldoPendente.toFixed(2)}`;
+// FUNÇÃO DETECTORA DE TOQUE LONGO / DOIS CLIQUES PARA O IPHONE
+function configurarToque(elemento, acaoDeletar) {
+    let timerToque;
     
-    // Muda a cor do visor baseado no saldo
-    if (dados.saldoPendente <= 0) {
-        document.getElementById('saldoTotal').style.color = '#34d399'; // Verde se não deve nada
-    } else {
-        document.getElementById('saldoTotal').style.color = '#f43f5e'; // Vermelho se tem saldo a receber
-    }
+    // Suporta segurar o dedo (1 segundo)
+    elemento.addEventListener('touchstart', () => {
+        timerToque = setTimeout(acaoDeletar, 800);
+    }, { passive: true });
 
-    // Atualiza tabela 1 (Horas)
-    const tbodyHoras = document.getElementById('tabelaHoras');
-    tbodyHoras.innerHTML = '';
-    dados.listaHoras.forEach(item => {
-        tbodyHoras.innerHTML += `<tr>
-            <td>${item.data}</td>
-            <td>${item.horas}h</td>
-            <td>R$ ${item.valorHora.toFixed(2)}</td>
-            <td>R$ ${item.total.toFixed(2)}</td>
-            <td style="text-align: center;">
-                <button class="btn-delete" onclick="excluirHora(${item.id})">🗑️</button>
-            </td>
-        </tr>`;
+    elemento.addEventListener('touchend', () => {
+        clearTimeout(timerToque);
     });
 
-    // Atualiza tabela 2 (Extrato)
+    // Suporta dois cliques rápidos (Alternativa de segurança)
+    elemento.addEventListener('dblclick', acaoDeletar);
+}
+
+// ATUALIZAR INTERFACE
+function atualizarTelas() {
+    const mesSelecionado = document.getElementById('filtroMes').value;
+    const anoSelecionado = document.getElementById('filtroAno').value;
+
+    document.getElementById('saldoTotal').innerText = `R$ ${dados.saldoPendente.toFixed(2)}`;
+    
+    if (dados.saldoPendente <= 0) {
+        document.getElementById('saldoTotal').style.color = '#34d399'; 
+    } else {
+        document.getElementById('saldoTotal').style.color = '#f43f5e'; 
+    }
+
+    // TABELA 1: HORAS
+    const tbodyHoras = document.getElementById('tabelaHoras');
+    tbodyHoras.innerHTML = '';
+    
+    const horasFiltradas = dados.listaHoras.filter(item => item.mes === mesSelecionado && item.ano === anoSelecionado);
+    
+    horasFiltradas.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'clicavel';
+        tr.innerHTML = `
+            <td>${item.data}</td>
+            <td>${item.horas}h</td>
+            <td>R$ 7,50</td>
+            <td>R$ ${item.total.toFixed(2)}</td>
+        `;
+        configurarToque(tr, () => excluirHora(item.id));
+        tbodyHoras.appendChild(tr);
+    });
+
+    // TABELA 2: EXTRATO
     const tbodySaldo = document.getElementById('tabelaSaldo');
     tbodySaldo.innerHTML = '';
-    dados.listaSaldo.slice().reverse().forEach(item => {
+    
+    const saldoFiltrado = dados.listaSaldo.filter(item => item.mes === mesSelecionado && item.ano === anoSelecionado);
+    
+    saldoFiltrado.slice().reverse().forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'clicavel';
+        
         const corValor = item.valor < 0 ? 'color: #f43f5e;' : 'color: #34d399;';
         const sinal = item.valor < 0 ? '' : '+';
-        tbodySaldo.innerHTML += `<tr>
+        
+        tr.innerHTML = `
             <td>${item.data}</td>
             <td>${item.descricao}</td>
-            <td style="${corValor} font-weight: bold;">${sinal} R$ ${item.valor.toFixed(2)}</td>
-            <td style="text-align: center;">
-                <button class="btn-delete" onclick="excluirSaldo(${item.id}, ${item.valor}, '${item.tipo}')">🗑️</button>
-            </td>
-        </tr>`;
+            <td style="${corValor} font-weight: bold;">${sinal} R$ ${Math.abs(item.valor).toFixed(2)}</td>
+        `;
+        configurarToque(tr, () => excluirSaldo(item.id, item.valor, item.tipo));
+        tbodySaldo.appendChild(tr);
     });
 }
 
@@ -164,5 +210,4 @@ function salvarDados() {
     localStorage.setItem('dados_sistema', JSON.stringify(dados));
 }
 
-// Inicialização
 atualizarTelas();

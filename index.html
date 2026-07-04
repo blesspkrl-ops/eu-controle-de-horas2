@@ -18,7 +18,6 @@
             --border: #334155;
         }
 
-        /* Correção para o fundo preto cobrir o topo do iPhone (onde fica a bateria) */
         html, body {
             background-color: var(--bg-color);
             -webkit-text-size-adjust: 100%;
@@ -63,7 +62,7 @@
             border-radius: 6px 6px 0 0;
             text-align: center;
             white-space: nowrap;
-            -webkit-tap-highlight-color: transparent; /* Remove o flash quadrado ao clicar no iPhone */
+            -webkit-tap-highlight-color: transparent;
         }
 
         .tab-btn.active { 
@@ -76,16 +75,15 @@
         .tab-content.active { display: block; }
 
         h2 { font-size: 20px; margin-top: 0; margin-bottom: 15px; color: var(--text-main); }
-        h3 { font-size: 16px; margin-top: 25px; color: var(--primary); }
+        h3 { font-size: 15px; margin-top: 25px; color: var(--text-muted); font-weight: normal; }
 
         .form-row {
             display: flex;
             gap: 12px;
-            flex-direction: column; /* No celular fica um embaixo do outro para não esmagar */
+            flex-direction: column; 
             margin-bottom: 15px;
         }
 
-        /* Se a tela for maior (computador), ele volta a ficar lado a lado */
         @media (min-width: 600px) {
             .form-row { flex-direction: row; }
         }
@@ -101,8 +99,7 @@
             color: var(--text-muted); 
         }
 
-        /* Ajuste crítico para os inputs no iOS */
-        input { 
+        input, select { 
             width: 100%; 
             padding: 12px; 
             background-color: var(--bg-color);
@@ -110,16 +107,20 @@
             border-radius: 8px; 
             box-sizing: border-box; 
             color: var(--text-main);
-            font-size: 16px; /* 16px impede o iPhone de dar aquele "zoom forçado" na tela ao clicar */
+            font-size: 16px; 
             transition: border 0.2s;
-            -webkit-appearance: none; /* Remove o design padrão do iOS */
+            -webkit-appearance: none; 
             appearance: none;
         }
 
-        /* Garante que o input de data apareça o texto claro no iPhone */
         input[type="date"] {
             color-scheme: dark; 
             min-height: 45px;
+        }
+
+        .periodo-inputs {
+            display: flex;
+            gap: 8px;
         }
 
         .btn-group {
@@ -128,7 +129,6 @@
             margin-top: 15px;
         }
 
-        /* Ajuste para os botões não ficarem cinzas ou redondos no iOS */
         button { 
             background-color: var(--primary); 
             color: #0f172a; 
@@ -148,16 +148,6 @@
         
         .btn-danger { background-color: var(--danger); color: white; }
         .btn-danger:hover { background-color: var(--danger-hover); }
-
-        .btn-delete {
-            background-color: transparent;
-            color: var(--danger);
-            padding: 6px 12px;
-            font-size: 14px;
-            border: 1px solid var(--danger);
-            border-radius: 6px;
-            min-height: 35px;
-        }
 
         .saldo-box { 
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
@@ -181,11 +171,9 @@
             color: var(--danger);
         }
 
-        /* Torna as tabelas roláveis para os lados no celular se os dados forem compridos */
+        /* Removida a rolagem horizontal chata, agora é 100% fixo */
         .table-responsive {
             width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch; /* Rolagem macia no iPhone */
             margin-top: 10px;
             border-radius: 8px;
             border: 1px solid var(--border);
@@ -195,13 +183,17 @@
             width: 100%; 
             border-collapse: collapse; 
             background-color: rgba(0,0,0,0.1);
+            table-layout: fixed; /* Força as colunas a dividirem o espaço certinho */
         }
 
         th, td { 
-            padding: 10px 12px; 
+            padding: 12px 10px; 
             text-align: left; 
             border-bottom: 1px solid var(--border);
             font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         th { 
@@ -210,11 +202,17 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            white-space: nowrap;
         }
 
-        tr:hover {
-            background-color: rgba(255,255,255,0.02);
+        /* Estilo visual para avisar o usuário que a linha é clicável */
+        tr.clicavel {
+            cursor: pointer;
+            -webkit-user-select: none; /* Impede o iOS de selecionar o texto ao segurar o dedo */
+            user-select: none;
+        }
+
+        tr.clicavel:active {
+            background-color: rgba(244, 63, 94, 0.15); /* Fica levemente vermelho ao tocar */
         }
     </style>
 </head>
@@ -238,8 +236,29 @@
                 <input type="number" id="horas" inputmode="decimal" step="0.1" placeholder="Ex: 8 ou 5.5">
             </div>
             <div class="form-group">
-                <label>Valor por Hora (R$):</label>
-                <input type="number" id="valorHora" inputmode="decimal" step="0.01" value="15.00">
+                <label>Filtrar Período:</label>
+                <div class="periodo-inputs">
+                    <select id="filtroMes" onchange="atualizarTelas()">
+                        <option value="01">Jan</option>
+                        <option value="02">Fev</option>
+                        <option value="03">Mar</option>
+                        <option value="04">Abr</option>
+                        <option value="05">Mai</option>
+                        <option value="06">Jun</option>
+                        <option value="07">Jul</option>
+                        <option value="08">Ago</option>
+                        <option value="09">Set</option>
+                        <option value="10">Out</option>
+                        <option value="11">Nov</option>
+                        <option value="12">Dez</option>
+                    </select>
+                    <select id="filtroAno" onchange="atualizarTelas()">
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
             </div>
         </div>
         <div class="btn-group">
@@ -247,16 +266,15 @@
             <button class="btn-danger" onclick="fecharMes()" style="flex: 1;">🔒 Fechar Mês</button>
         </div>
 
-        <h3>Histórico do Período Atual</h3>
+        <h3>📅 Histórico (Segure o dedo na linha para apagar)</h3>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Data</th>
-                        <th>Horas</th>
-                        <th>Valor/H</th>
-                        <th>Total</th>
-                        <th style="width: 50px; text-align: center;">Ação</th>
+                        <th style="width: 28%;">Data</th>
+                        <th style="width: 22%;">Horas</th>
+                        <th style="width: 24%;">Valor/H</th>
+                        <th style="width: 26%;">Total</th>
                     </tr>
                 </thead>
                 <tbody id="tabelaHoras"></tbody>
@@ -279,15 +297,14 @@
             <button onclick="registrarPagamento()" style="width: 100%;">💸 Confirmar Recebimento</button>
         </div>
 
-        <h3>Extrato de Movimentações</h3>
+        <h3>📊 Extrato (Segure o dedo na linha para apagar)</h3>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Data</th>
-                        <th>Descrição</th>
-                        <th>Valor</th>
-                        <th style="width: 50px; text-align: center;">Ação</th>
+                        <th style="width: 28%;">Data</th>
+                        <th style="width: 44%;">Descrição</th>
+                        <th style="width: 28%;">Valor</th>
                     </tr>
                 </thead>
                 <tbody id="tabelaSaldo"></tbody>
