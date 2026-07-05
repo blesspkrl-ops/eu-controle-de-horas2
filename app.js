@@ -20,37 +20,35 @@ let dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
 let usuarioAtualUid = null;
 const VALOR_HORA_FIXO = 7.50;
 
-setPersistence(auth, browserSessionPersistence).then(() => {
-    onAuthStateChanged(auth, async (user) => {
-        const loginScreen = document.getElementById('login-screen');
-        const appScreen = document.getElementById('app-screen');
-        if (user) {
-            usuarioAtualUid = user.uid;
-            loginScreen.classList.add('hidden');
-            appScreen.classList.remove('hidden');
-            await carregarDados();
-        } else {
-            loginScreen.classList.remove('hidden');
-            appScreen.classList.add('hidden');
-        }
+setPersistence(auth, browserSessionPersistence)
+    .then(() => {
+        onAuthStateChanged(auth, async (user) => {
+            const loginScreen = document.getElementById('login-screen');
+            const appScreen = document.getElementById('app-screen');
+            if (user) {
+                usuarioAtualUid = user.uid;
+                loginScreen.classList.add('hidden');
+                appScreen.classList.remove('hidden');
+                await carregarDadosProtegidos();
+            } else {
+                loginScreen.classList.remove('hidden');
+                appScreen.classList.add('hidden');
+            }
+        });
     });
-});
 
-async function carregarDados() {
+async function carregarDadosProtegidos() {
     const docRef = doc(db, "usuarios", usuarioAtualUid);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
         dados = snap.data();
     } else {
-        // Se for novo, tenta buscar do principal
-        const snapAntigo = await getDoc(doc(db, "usuarios", "usuario_principal"));
-        dados = snapAntigo.exists() ? snapAntigo.data() : { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
-        await salvarDados();
+        dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
     }
     window.atualizarTelas();
 }
 
-async function salvarDados() {
+async function salvarDadosNuvem() {
     if (!usuarioAtualUid) return;
     await setDoc(doc(db, "usuarios", usuarioAtualUid), dados);
 }
@@ -58,59 +56,52 @@ async function salvarDados() {
 window.fazerLogin = async () => {
     try {
         await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-senha').value);
-    } catch (e) { alert("Erro de login!"); }
+    } catch (e) { alert("Erro ao entrar!"); }
 };
 
 window.fazerLogout = () => signOut(auth);
 
 window.lancarHoras = async () => {
-    const d = document.getElementById('data').value.split('-');
-    const h = parseFloat(document.getElementById('horas').value);
-    if (!d[0] || isNaN(h)) return alert("Preencha os campos!");
+    const data = document.getElementById('data').value.split('-');
+    const horas = parseFloat(document.getElementById('horas').value);
+    if (!data[0] || isNaN(horas)) return alert("Preencha os campos!");
 
     dados.listaHoras.push({
         id: Date.now(),
-        data: `${d[2]}/${d[1]}/${d[0]}`,
-        mes: d[1],
-        ano: d[0],
-        horas: h,
-        total: h * VALOR_HORA_FIXO,
+        data: `${data[2]}/${data[1]}/${data[0]}`,
+        mes: data[1],
+        ano: data[0],
+        horas: horas,
+        total: horas * VALOR_HORA_FIXO,
         fechado: false
     });
 
-    await salvarDados();
+    await salvarDadosNuvem();
     window.atualizarTelas();
-    document.getElementById('horas').value = '';
 };
 
 window.atualizarTelas = () => {
-    // Atualiza Saldo
-    document.getElementById('saldoTotal').innerText = `R$ ${parseFloat(dados.saldoPendente || 0).toFixed(2)}`;
+    document.getElementById('saldoTotal').innerText = `R$ ${dados.saldoPendente.toFixed(2)}`;
     
-    // Filtros
     const m = document.getElementById('filtroMes').value;
     const a = document.getElementById('filtroAno').value;
     const filtradas = dados.listaHoras.filter(i => i.mes === m && i.ano === a);
 
-    // Cálculos garantindo que são números
-    const totalH = filtradas.reduce((s, i) => s + parseFloat(i.horas || 0), 0);
-    const totalV = filtradas.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+    const totalH = filtradas.reduce((s, i) => s + parseFloat(i.horas), 0);
+    const totalV = filtradas.reduce((s, i) => s + parseFloat(i.total), 0);
 
-    // Exibe no HTML
     document.getElementById('resumoHoras').innerText = `${totalH.toFixed(1)}h`;
     document.getElementById('resumoValor').innerText = `R$ ${totalV.toFixed(2)}`;
 
-    // Tabela
     const tbody = document.getElementById('tabelaHoras');
     tbody.innerHTML = '';
     filtradas.forEach(i => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${i.data}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
-        tr.ondblclick = async () => {
+        tr.innerHTML = `<td>${i.data}</td><td>${i.horas}h</td><td>R$ ${i.total.toFixed(2)}</td>`;
+        tr.ondblclick = () => {
             if(i.fechado) return alert("Período fechado!");
             dados.listaHoras = dados.listaHoras.filter(x => x.id !== i.id);
-            await salvarDados();
-            window.atualizarTelas();
+            salvarDadosNuvem().then(window.atualizarTelas);
         };
         tbody.appendChild(tr);
     });
@@ -119,6 +110,4 @@ window.atualizarTelas = () => {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-entrar').addEventListener('click', window.fazerLogin);
     document.getElementById('btn-sair').addEventListener('click', window.fazerLogout);
-    document.getElementById('filtroMes').addEventListener('change', window.atualizarTelas);
-    document.getElementById('filtroAno').addEventListener('change', window.atualizarTelas);
 });
