@@ -4,12 +4,12 @@ import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/fireb
 
 // Configuração do seu novo projeto Firebase (Atualizado conforme seu print)
 const firebaseConfig = {
-    apiKey: "AIzaSyCtCBDpnjpg9tYDNvpkoXyjskyxaO00-d0",
-    authDomain: "controle-de-horas-83afb.firebaseapp.com",
-    projectId: "controle-de-horas-83afb",
-    storageBucket: "controle-de-horas-83afb.firebasestorage.app",
-    messagingSenderId: "970403178442",
-    appId: "1:970403178442:web:ca23be1909a8a8deee1133"
+  apiKey: "AIzaSyCTcBDpnjpg9tYDNvpkoXyjskyxaO00-d0",
+  authDomain: "controle-de-horas-83afb.firebaseapp.com",
+  projectId: "controle-de-horas-83afb",
+  storageBucket: "controle-de-horas-83afb.firebasestorage.app",
+  messagingSenderId: "970403178442",
+  appId: "1:970403178442:web:ca235e1909a8a8deee1133"
 };
 
 // Inicializa Firebase
@@ -44,35 +44,35 @@ document.getElementById('filtroAno').value = String(hoje.getFullYear());
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         usuarioAtual = user;
-        loginScreen.style.display = 'none';
-        appScreen.style.display = 'block';
+        //loginScreen.style.display = 'none';
+        //appScreen.style.display = 'block';
         await carregarDadosNuvem();
     } else {
         usuarioAtual = null;
-        loginScreen.style.display = 'flex';
-        appScreen.style.display = 'none';
+        //loginScreen.style.display = 'flex';
+        //appScreen.style.display = 'none';
     }
 });
 
-document.getElementById('btn-entrar').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value;
-    const senha = document.getElementById('login-senha').value;
+//document.getElementById('btn-entrar').addEventListener('click', async () => {
+     //const email = document.getElementById('login-email').value;
+    //const senha = document.getElementById('login-senha').value;
 
-    if (!email || !senha) {
-        alert("Preencha todos os campos!");
-        return;
-    }
+    //if (!email || !senha) {
+        //alert("Preencha todos os campos!");
+        //return;
+    //}
 
-    try {
-        await signInWithEmailAndPassword(auth, email, senha);
-    } catch (error) {
-        alert("Erro ao fazer login: Verifique suas credenciais.");
-    }
-});
+   //try {
+        //await signInWithEmailAndPassword(auth, email, senha);
+    //} catch (error) {
+        //alert("Erro ao fazer login: Verifique suas credenciais.");
+    //}
+//});
 
-document.getElementById('btn-sair').addEventListener('click', () => {
-    signOut(auth);
-});
+//document.getElementById('btn-sair').addEventListener('click', () => {
+    //signOut(auth);
+//});
 
 
 // ==========================================
