@@ -209,11 +209,20 @@ window.atualizarTelas = () => {
         tbodyHoras.appendChild(tr);
     });
 
-    // Renderiza Extrato de Saldo ordenado por data
+    // Renderiza Extrato de Saldo ordenado por data DECRESCENTE (mais recente primeiro)
     const tbodySaldo = document.getElementById('tabelaSaldo');
     if (tbodySaldo) {
         tbodySaldo.innerHTML = '';
-        const saldoOrdenado = ordenarPorData([...dados.listaSaldo]);
+        
+        // Ordena colocando o mais recente no topo
+        const saldoOrdenado = [...dados.listaSaldo].sort((a, b) => {
+            const partesA = a.data.split('/');
+            const partesB = b.data.split('/');
+            const dataA = new Date(partesA[2], partesA[1] - 1, partesA[0]);
+            const dataB = new Date(partesB[2], partesB[1] - 1, partesB[0]);
+            return dataB - dataA; // Invertido para decrescente
+        });
+
         saldoOrdenado.forEach(i => {
             const tr = document.createElement('tr');
             const corValor = i.valor >= 0 ? "color: #34d399;" : "color: #f43f5e;";
