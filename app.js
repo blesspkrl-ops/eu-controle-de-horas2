@@ -19,7 +19,6 @@ let dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
 let usuarioAtualUid = null;
 const VALOR_HORA_FIXO = 7.50;
 
-// Configura a data de hoje nos inputs ao carregar
 function configurarDataAtual() {
     const hoje = new Date();
     const ano = hoje.getFullYear();
@@ -75,8 +74,7 @@ async function salvarDados() {
     await setDoc(doc(db, "usuarios", usuarioAtualUid), dados);
 }
 
-// Auxiliar para ordenar listas por data string (DD/MM/AAAA)
-function ordenarPorData(lista) {
+function ordenarPorDataCrescente(lista) {
     return lista.sort((a, b) => {
         const partesA = a.data.split('/');
         const partesB = b.data.split('/');
@@ -183,8 +181,8 @@ window.atualizarTelas = () => {
     const m = document.getElementById('filtroMes').value;
     const a = document.getElementById('filtroAno').value;
     
-    // Ordenar histórico de horas cronologicamente
-    const horasOrdenadas = ordenarPorData([...dados.listaHoras]);
+    // Horas em ordem CRESCENTE (do dia 01 em diante)
+    const horasOrdenadas = ordenarPorDataCrescente([...dados.listaHoras]);
     const filtradas = horasOrdenadas.filter(i => i.mes === m && i.ano === a);
 
     const totalH = filtradas.reduce((s, i) => s + parseFloat(i.horas || 0), 0);
@@ -193,13 +191,14 @@ window.atualizarTelas = () => {
     document.getElementById('resumoHoras').innerText = `${totalH.toFixed(1)}h`;
     document.getElementById('resumoValor').innerText = `R$ ${totalV.toFixed(2)}`;
 
-    // Renderiza Histórico de Horas
+    // Renderiza Histórico de Horas (Apenas dia e mês: DD/MM)
     const tbodyHoras = document.getElementById('tabelaHoras');
     tbodyHoras.innerHTML = '';
     filtradas.forEach(i => {
         const tr = document.createElement('tr');
         tr.className = 'clicavel';
-        tr.innerHTML = `<td>${i.data}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
+        const dataExibicao = i.data.slice(0, 5); // Recorta para ficar apenas DD/MM
+        tr.innerHTML = `<td>${dataExibicao}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
         tr.ondblclick = async () => {
             if(i.fechado) return alert("Período já fechado! Não é possível apagar.");
             dados.listaHoras = dados.listaHoras.filter(x => x.id !== i.id);
@@ -209,24 +208,24 @@ window.atualizarTelas = () => {
         tbodyHoras.appendChild(tr);
     });
 
-    // Renderiza Extrato de Saldo ordenado por data DECRESCENTE (mais recente primeiro)
+    // Renderiza Extrato de Saldo em ordem DECRESCENTE (Mais recente primeiro e DD/MM)
     const tbodySaldo = document.getElementById('tabelaSaldo');
     if (tbodySaldo) {
         tbodySaldo.innerHTML = '';
         
-        // Ordena colocando o mais recente no topo
-        const saldoOrdenado = [...dados.listaSaldo].sort((a, b) => {
-            const partesA = a.data.split('/');
-            const partesB = b.data.split('/');
-            const dataA = new Date(partesA[2], partesA[1] - 1, partesA[0]);
-            const dataB = new Date(partesB[2], partesB[1] - 1, partesB[0]);
-            return dataB - dataA; // Invertido para decrescente
+        const saldoOrdenadoDecrescente = [...dados.listaSaldo].sort((x, y) => {
+            const partesX = x.data.split('/');
+            const partesY = y.data.split('/');
+            const dataX = new Date(partesX[2], partesX[1] - 1, partesX[0]);
+            const dataY = new Date(partesY[2], partesY[1] - 1, partesY[0]);
+            return dataY - dataX; // Mais recente primeiro
         });
 
-        saldoOrdenado.forEach(i => {
+        saldoOrdenadoDecrescente.forEach(i => {
             const tr = document.createElement('tr');
             const corValor = i.valor >= 0 ? "color: #34d399;" : "color: #f43f5e;";
-            tr.innerHTML = `<td>${i.data}</td><td>${i.descricao}</td><td style="${corValor}">R$ ${Math.abs(i.valor).toFixed(2)}</td>`;
+            const dataExibicao = i.data.slice(0, 5); // Recorta para ficar apenas DD/MM
+            tr.innerHTML = `<td>${dataExibicao}</td><td>${i.descricao}</td><td style="${corValor}">R$ ${Math.abs(i.valor).toFixed(2)}</td>`;
             tbodySaldo.appendChild(tr);
         });
     }
