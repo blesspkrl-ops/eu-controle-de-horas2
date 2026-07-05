@@ -19,6 +19,24 @@ let dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
 let usuarioAtualUid = null;
 const VALOR_HORA_FIXO = 7.50;
 
+// Configura a data de hoje nos inputs ao carregar
+function configurarDataAtual() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+
+    if (document.getElementById('data')) {
+        document.getElementById('data').value = `${ano}-${mes}-${dia}`;
+    }
+    if (document.getElementById('filtroMes')) {
+        document.getElementById('filtroMes').value = mes;
+    }
+    if (document.getElementById('filtroAno')) {
+        document.getElementById('filtroAno').value = String(ano);
+    }
+}
+
 setPersistence(auth, browserSessionPersistence).then(() => {
     onAuthStateChanged(auth, async (user) => {
         const loginScreen = document.getElementById('login-screen');
@@ -27,6 +45,7 @@ setPersistence(auth, browserSessionPersistence).then(() => {
             usuarioAtualUid = user.uid;
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
+            configurarDataAtual();
             await carregarDados();
         } else {
             loginScreen.classList.remove('hidden');
@@ -40,9 +59,12 @@ async function carregarDados() {
     const snap = await getDoc(docRef);
     if (snap.exists()) {
         dados = snap.data();
+        if (!dados.listaSaldo) dados.listaSaldo = [];
+        if (!dados.listaHoras) dados.listaHoras = [];
     } else {
         const snapAntigo = await getDoc(doc(db, "usuarios", "usuario_principal"));
         dados = snapAntigo.exists() ? snapAntigo.data() : { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
+        if (!dados.listaSaldo) dados.listaSaldo = [];
         await salvarDados();
     }
     window.atualizarTelas();
@@ -53,12 +75,25 @@ async function salvarDados() {
     await setDoc(doc(db, "usuarios", usuarioAtualUid), dados);
 }
 
+// Auxiliar para ordenar listas por data string (DD/MM/AAAA)
+function ordenarPorData(lista) {
+    return lista.sort((a, b) => {
+        const partesA = a.data.split('/');
+        const partesB = b.data.split('/');
+        const dataA = new Date(partesA[2], partesA[1] - 1, partesA[0]);
+        const dataB = new Date(partesB[2], partesB[1] - 1, partesB[0]);
+        return dataA - dataB;
+    });
+}
+
 // EXPOSIÇÃO DAS FUNÇÕES PARA O HTML
 window.switchTab = function(tabId) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
-    event.currentTarget.classList.add('active');
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
 };
 
 window.fazerLogin = async () => {
@@ -89,6 +124,57 @@ window.lancarHoras = async () => {
     document.getElementById('horas').value = '';
 };
 
+window.fecharMes = async () => {
+    const m = document.getElementById('filtroMes').value;
+    const a = document.getElementById('filtroAno').value;
+    
+    const pendentes = dados.listaHoras.filter(i => i.mes === m && i.ano === a && !i.fechado);
+    if (pendentes.length === 0) return alert("Nenhuma hora aberta para fechar neste mês!");
+
+    const valorFechamento = pendentes.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+    
+    pendentes.forEach(i => i.fechado = true);
+    dados.saldoPendente = parseFloat(dados.saldoPendente || 0) + valorFechamento;
+
+    const hoje = new Date();
+    const dataFormatada = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+
+    dados.listaSaldo.push({
+        id: Date.now(),
+        data: dataFormatada,
+        descricao: `Fechamento ${m}/${a}`,
+        valor: valorFechamento,
+        tipo: 'credito'
+    });
+
+    await salvarDados();
+    window.atualizarTelas();
+    alert("Mês fechado com sucesso e acumulado no saldo!");
+};
+
+window.registrarPagamento = async () => {
+    const valor = parseFloat(document.getElementById('valorPago').value);
+    if (isNaN(valor) || valor <= 0) return alert("Insira um valor válido recebido!");
+
+    dados.saldoPendente = parseFloat(dados.saldoPendente || 0) - valor;
+
+    const hoje = new Date();
+    const dataFormatada = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+
+    dados.listaSaldo.push({
+        id: Date.now(),
+        data: dataFormatada,
+        descricao: "Pagamento Recebido",
+        valor: valor * -1,
+        tipo: 'debito'
+    });
+
+    await salvarDados();
+    window.atualizarTelas();
+    document.getElementById('valorPago').value = '';
+    alert("Pagamento registrado!");
+};
+
 window.atualizarTelas = () => {
     if (!document.getElementById('saldoTotal')) return; 
 
@@ -96,7 +182,10 @@ window.atualizarTelas = () => {
     
     const m = document.getElementById('filtroMes').value;
     const a = document.getElementById('filtroAno').value;
-    const filtradas = dados.listaHoras.filter(i => i.mes === m && i.ano === a);
+    
+    // Ordenar histórico de horas cronologicamente
+    const horasOrdenadas = ordenarPorData([...dados.listaHoras]);
+    const filtradas = horasOrdenadas.filter(i => i.mes === m && i.ano === a);
 
     const totalH = filtradas.reduce((s, i) => s + parseFloat(i.horas || 0), 0);
     const totalV = filtradas.reduce((s, i) => s + parseFloat(i.total || 0), 0);
@@ -104,20 +193,34 @@ window.atualizarTelas = () => {
     document.getElementById('resumoHoras').innerText = `${totalH.toFixed(1)}h`;
     document.getElementById('resumoValor').innerText = `R$ ${totalV.toFixed(2)}`;
 
-    const tbody = document.getElementById('tabelaHoras');
-    tbody.innerHTML = '';
+    // Renderiza Histórico de Horas
+    const tbodyHoras = document.getElementById('tabelaHoras');
+    tbodyHoras.innerHTML = '';
     filtradas.forEach(i => {
         const tr = document.createElement('tr');
         tr.className = 'clicavel';
         tr.innerHTML = `<td>${i.data}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
         tr.ondblclick = async () => {
-            if(i.fechado) return alert("Período fechado!");
+            if(i.fechado) return alert("Período já fechado! Não é possível apagar.");
             dados.listaHoras = dados.listaHoras.filter(x => x.id !== i.id);
             await salvarDados();
             window.atualizarTelas();
         };
-        tbody.appendChild(tr);
+        tbodyHoras.appendChild(tr);
     });
+
+    // Renderiza Extrato de Saldo ordenado por data
+    const tbodySaldo = document.getElementById('tabelaSaldo');
+    if (tbodySaldo) {
+        tbodySaldo.innerHTML = '';
+        const saldoOrdenado = ordenarPorData([...dados.listaSaldo]);
+        saldoOrdenado.forEach(i => {
+            const tr = document.createElement('tr');
+            const corValor = i.valor >= 0 ? "color: #34d399;" : "color: #f43f5e;";
+            tr.innerHTML = `<td>${i.data}</td><td>${i.descricao}</td><td style="${corValor}">R$ ${Math.abs(i.valor).toFixed(2)}</td>`;
+            tbodySaldo.appendChild(tr);
+        });
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
