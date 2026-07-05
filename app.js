@@ -328,4 +328,4 @@ window.atualizarTelas = function() {
         configurarToque(tr, () => excluirSaldo(item.id, item.valor, item.tipo));
         tbodySaldo.appendChild(tr);
     });
-}; 
+};
