@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Configuração do seu novo projeto Firebase (Validado)
+// Configuração oficial do seu Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCtCBDpnjpg9tYDNvpkoXyjskyxaO00-d0",
     authDomain: "controle-de-horas-83afb.firebaseapp.com",
@@ -22,18 +22,31 @@ let dados = {
     listaSaldo: []
 };
 
-// ID Fixo para usar direto sem precisar de tela de login
 const USUARIO_ID = "usuario_principal";
 const VALOR_HORA_FIXO = 7.50;
 
-// Inicializa datas e filtros padrões ao carregar a página
-const hoje = new Date();
-if(document.getElementById('data')) document.getElementById('data').valueAsDate = hoje;
-if(document.getElementById('filtroMes')) document.getElementById('filtroMes').value = String(hoje.getMonth() + 1).padStart(2, '0');
-if(document.getElementById('filtroAno')) document.getElementById('filtroAno').value = String(hoje.getFullYear());
+// Inicializa o app assim que a página carregar
+window.addEventListener('DOMContentLoaded', () => {
+    const hoje = new Date();
+    
+    const campoData = document.getElementById('data');
+    if (campoData) campoData.valueAsDate = hoje;
+    
+    const campoFiltroMes = document.getElementById('filtroMes');
+    if (campoFiltroMes) {
+        campoFiltroMes.value = String(hoje.getMonth() + 1).padStart(2, '0');
+        campoFiltroMes.addEventListener('change', () => window.atualizarTelas());
+    }
+    
+    const campoFiltroAno = document.getElementById('filtroAno');
+    if (campoFiltroAno) {
+        campoFiltroAno.value = String(hoje.getFullYear());
+        campoFiltroAno.addEventListener('change', () => window.atualizarTelas());
+    }
 
-// Carrega os dados direto da nuvem assim que o script inicia
-carregarDadosNuvem();
+    // Dispara a busca dos dados na nuvem
+    carregarDadosNuvem();
+});
 
 // ==========================================
 // BANCO DE DADOS (FIRESTORE)
@@ -51,7 +64,7 @@ async function carregarDadosNuvem() {
             dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
             await setDoc(docRef, dados);
         }
-        atualizarTelas();
+        window.atualizarTelas();
     } catch (e) {
         console.error("Erro ao carregar dados:", e);
     }
@@ -78,16 +91,15 @@ window.switchTab = function(tabId) {
     const targetTab = document.getElementById(tabId);
     if (targetTab) targetTab.classList.add('active');
     
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
+    if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
     }
 };
 
-// LANÇAR HORAS
 window.lancarHoras = async function() {
-    const dataInput = document.getElementById('data').value;
+    const dataInput = document.getElementById('data')?.value;
     const horasInput = document.getElementById('horas');
-    const horas = parseFloat(horasInput.value);
+    const horas = horasInput ? parseFloat(horasInput.value) : NaN;
 
     if (!dataInput || isNaN(horas)) {
         alert("Por favor, informe a quantidade de horas!");
@@ -109,12 +121,11 @@ window.lancarHoras = async function() {
 
     dados.listaHoras.push(novoLancamento);
     await salvarDadosNuvem();
-    atualizarTelas();
+    window.atualizarTelas();
     
-    horasInput.value = '';
+    if (horasInput) horasInput.value = '';
 };
 
-// EXCLUIR HORA
 window.excluirHora = async function(id) {
     const item = dados.listaHoras.find(h => h.id === id);
     if (item && item.fechado) {
@@ -125,16 +136,18 @@ window.excluirHora = async function(id) {
     if (confirm("Deseja apagar este lançamento?")) {
         dados.listaHoras = dados.listaHoras.filter(item => item.id !== id);
         await salvarDadosNuvem();
-        atualizarTelas();
+        window.atualizarTelas();
     }
 };
 
-// FECHAR MÊS
 window.fecharMes = async function() {
-    const mesSelecionado = document.getElementById('filtroMes').value;
-    const anoSelecionado = document.getElementById('filtroAno').value;
-    const selectMes = document.getElementById('filtroMes');
-    const nomeMes = selectMes.options[selectMes.selectedIndex].text;
+    const filtroMes = document.getElementById('filtroMes');
+    const filtroAno = document.getElementById('filtroAno');
+    if (!filtroMes || !filtroAno) return;
+
+    const mesSelecionado = filtroMes.value;
+    const anoSelecionado = filtroAno.value;
+    const nomeMes = filtroMes.options[filtroMes.selectedIndex].text;
 
     const horasAbertasDoMes = dados.listaHoras.filter(h => h.mes === mesSelecionado && h.ano === anoSelecionado && !h.fechado);
 
@@ -167,14 +180,13 @@ window.fecharMes = async function() {
     });
 
     await salvarDadosNuvem();
-    atualizarTelas();
+    window.atualizarTelas();
     alert(`Período fechado: R$ ${totalTrabalhado.toFixed(2)} enviado ao saldo.`);
 };
 
-// REGISTRAR PAGAMENTO
 window.registrarPagamento = async function() {
     const valorInput = document.getElementById('valorPago');
-    const valorPago = parseFloat(valorInput.value);
+    const valorPago = valorInput ? parseFloat(valorInput.value) : NaN;
 
     if (isNaN(valorPago) || valorPago <= 0) {
         alert("Digite um valor válido!");
@@ -198,8 +210,8 @@ window.registrarPagamento = async function() {
     });
 
     await salvarDadosNuvem();
-    atualizarTelas();
-    valorInput.value = '';
+    window.atualizarTelas();
+    if (valorInput) valorInput.value = '';
 };
 
 window.excluirSaldo = async function(id, valor, tipo) {
@@ -219,7 +231,7 @@ window.excluirSaldo = async function(id, valor, tipo) {
 
         dados.listaSaldo = dados.listaSaldo.filter(item => item.id !== id);
         await salvarDadosNuvem();
-        atualizarTelas();
+        window.atualizarTelas();
     }
 };
 
@@ -232,20 +244,22 @@ function configurarToque(elemento, acaoDeletar) {
     elemento.addEventListener('dblclick', acaoDeletar);
 }
 
+// ==========================================
 // ATUALIZAR INTERFACE
+// ==========================================
 window.atualizarTelas = function() {
-    const filtroMesEl = document.getElementById('filtroMes');
-    const filtroAnoEl = document.getElementById('filtroAno');
-    if (!filtroMesEl || !filtroAnoEl) return;
-
-    const mesSelecionado = filtroMesEl.value;
-    const anoSelecionado = filtroAnoEl.value;
-
     const saldoTotalEl = document.getElementById('saldoTotal');
     if (saldoTotalEl) {
         saldoTotalEl.innerText = `R$ ${dados.saldoPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         saldoTotalEl.style.color = dados.saldoPendente <= 0 ? '#34d399' : '#f43f5e';
     }
+
+    const filtroMesEl = document.getElementById('filtroMes');
+    const filtroAnoEl = document.getElementById('filtroAno');
+    
+    // Se não houver os filtros na aba atual, ele ainda sim atualiza o saldo e o extrato tranquilamente
+    const mesSelecionado = filtroMesEl ? filtroMesEl.value : String(new Date().getMonth() + 1).padStart(2, '0');
+    const anoSelecionado = filtroAnoEl ? filtroAnoEl.value : String(new Date().getFullYear());
 
     // TABELA 1: HORAS
     const tbodyHoras = document.getElementById('tabelaHoras');
@@ -273,14 +287,14 @@ window.atualizarTelas = function() {
         });
     }
 
-    // TABELA 2: EXTRATO
+    // TABELA 2: EXTRATO (SALÁRIO)
     const tbodySaldo = document.getElementById('tabelaSaldo');
     if (tbodySaldo) {
         tbodySaldo.innerHTML = '';
         dados.listaSaldo.slice().reverse().forEach(item => {
             const tr = document.createElement('tr');
             tr.className = 'clicavel';
-            const corValor = item.valor < 0 ? 'color: #f43f5e;' : 'color: #34d399;';
+            const corValor = item.valor < 0 ? 'color: #34d399;' : 'color: #f43f5e;';
             const sinal = item.valor < 0 ? '' : '+';
             
             tr.innerHTML = `
@@ -293,7 +307,3 @@ window.atualizarTelas = function() {
         });
     }
 };
-
-// Vincula os filtros para atualizar a tela ao mudar mês/ano
-if(document.getElementById('filtroMes')) document.getElementById('filtroMes').addEventListener('change', () => window.atualizarTelas());
-if(document.getElementById('filtroAno')) document.getElementById('filtroAno').addEventListener('change', () => window.atualizarTelas());
