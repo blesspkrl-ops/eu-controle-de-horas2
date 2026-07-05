@@ -227,17 +227,56 @@
         tr.clicavel:active {
             background-color: rgba(244, 63, 94, 0.15); 
         }
+
+        /* ESTILOS DA TELA DE LOGIN (BLOQUEIO) */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            background: var(--card-bg);
+            padding: 30px 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+        .login-group {
+            margin-bottom: 15px;
+        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div id="login-screen" class="container login-screen">
+    <div class="login-card">
+        <h2 style="text-align: center; color: var(--primary); margin-bottom: 25px;">Acesso Restrito</h2>
+        
+        <div class="login-group">
+            <label>E-mail:</label>
+            <input type="email" id="login-email" placeholder="seuemail@exemplo.com">
+        </div>
+        
+        <div class="login-group">
+            <label>Senha:</label>
+            <input type="password" id="login-senha" placeholder="••••••••">
+        </div>
+
+        <button id="btn-entrar" style="width: 100%; margin-top: 10px;">Entrar no Painel</button>
+    </div>
+</div>
+
+<div id="app-screen" class="container hidden">
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('carga-horaria')">⏱️ Horas</button>
         <button class="tab-btn" onclick="switchTab('salario-saldo')">💰 Salário</button>
     </div>
 
-    <!-- ABA 1: CARGA HORÁRIA -->
     <div id="carga-horaria" class="tab-content active">
         <h2>Horas de Serviço</h2>
         <div class="form-row">
@@ -300,11 +339,10 @@
         </div>
     </div>
 
-    <!-- ABA 2: SALÁRIO E SALDO -->
     <div id="salario-saldo" class="tab-content">
         <h2>Controle de Salário</h2>
         <div class="saldo-box">
-            <span>Sensaçao te deve:</span>
+            <span>Sensação te deve:</span>
             <span id="saldoTotal" class="saldo-valor">R$ 0,00</span>
         </div>
 
@@ -320,7 +358,6 @@
         <div class="table-responsive">
             <table>
                 <thead>
-                    <!-- ALTERADO: Ajuste de proporção para dar espaço máximo ao Valor -->
                     <tr>
                         <th style="width: 20%;">Data</th>
                         <th style="width: 45%;">Descrição</th>
@@ -330,6 +367,8 @@
                 <tbody id="tabelaSaldo"></tbody>
             </table>
         </div>
+
+        <button id="btn-sair" class="btn-danger" style="width: 100%; margin-top: 30px; padding: 10px;">🚪 Sair do Aplicativo</button>
     </div>
 </div>
 
