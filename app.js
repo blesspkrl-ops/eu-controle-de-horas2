@@ -82,9 +82,14 @@ function fecharMes() {
     const totalTrabalhado = horasAbertasDoMes.reduce((sum, item) => sum + item.total, 0);
     dados.saldoPendente += totalTrabalhado;
 
+    const dataHoje = new Date();
+    const diaReg = String(dataHoje.getDate()).padStart(2, '0');
+    const mesReg = String(dataHoje.getMonth() + 1).padStart(2, '0');
+
+    // ALTERADO: Data salva agora apenas como DD/MM para o extrato de salário
     dados.listaSaldo.push({
         id: Date.now(),
-        data: new Date().toLocaleDateString('pt-BR'),
+        data: `${diaReg}/${mesReg}`,
         mes: mesSelecionado,
         ano: anoSelecionado,
         descricao: `Fechamento (${nomeMes})`,
@@ -118,10 +123,10 @@ function registrarPagamento() {
 
     dados.saldoPendente -= valorPago;
 
-    // ALTERADO: Descrição salva como "Pagamento (DD/MM)" conforme pedido
+    // ALTERADO: Data salva agora apenas como DD/MM para liberar espaço
     dados.listaSaldo.push({
         id: Date.now(),
-        data: dataHoje.toLocaleDateString('pt-BR'),
+        data: `${diaReg}/${mesReg}`,
         mes: mesReg,
         ano: String(dataHoje.getFullYear()),
         descricao: `Pagamento (${diaReg}/${mesReg})`,
@@ -201,7 +206,6 @@ function atualizarTelas() {
         if (item.fechado) {
             tr.style.opacity = '0.6';
         }
-        // ALTERADO: LINHA AGORA SÓ ADICIONA DATA, HORAS E TOTAL (REMOVIDO VALOR_HORA)
         tr.innerHTML = `
             <td>${item.data} ${item.fechado ? '🔒' : ''}</td>
             <td>${item.horas}h</td>
@@ -222,10 +226,11 @@ function atualizarTelas() {
         const corValor = item.valor < 0 ? 'color: #f43f5e;' : 'color: #34d399;';
         const sinal = item.valor < 0 ? '' : '+';
         
+        // ALTERADO: item.data agora renderiza apenas o DD/MM reduzido que guardamos
         tr.innerHTML = `
             <td>${item.data}</td>
             <td>${item.descricao}</td>
-            <td style="${corValor} font-weight: bold;">${sinal} R$ ${Math.abs(item.valor).toFixed(2)}</td>
+            <td style="${corValor} font-weight: bold; text-align: right;">${sinal} R$ ${Math.abs(item.valor).toFixed(2)}</td>
         `;
         configurarToque(tr, () => excluirSaldo(item.id, item.valor, item.tipo));
         tbodySaldo.appendChild(tr);
