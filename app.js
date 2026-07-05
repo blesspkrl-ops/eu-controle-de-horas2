@@ -22,31 +22,37 @@ let dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
 let usuarioAtualUid = null;
 const VALOR_HORA_FIXO = 7.50;
 
-// Escuta o status do Login para mostrar/esconder as telas
-onAuthStateChanged(auth, async (user) => {
-    const loginScreen = document.getElementById('login-screen');
-    const appScreen = document.getElementById('app-screen');
+// Configura persistência estilo banco de dados (exige senha ao fechar e abrir)
+setPersistence(auth, browserSessionPersistence)
+    .then(() => {
+        // Escuta o status do Login
+        onAuthStateChanged(auth, async (user) => {
+            const loginScreen = document.getElementById('login-screen');
+            const appScreen = document.getElementById('app-screen');
 
-    if (user) {
-        usuarioAtualUid = user.uid;
-        if (loginScreen) loginScreen.classList.add('hidden');
-        if (appScreen) appScreen.classList.remove('hidden');
-        await carregarDadosProtegidos();
-    } else {
-        usuarioAtualUid = null;
-        if (loginScreen) loginScreen.classList.remove('hidden');
-        if (appScreen) appScreen.classList.add('hidden');
-    }
-});
+            if (user) {
+                usuarioAtualUid = user.uid;
+                if (loginScreen) loginScreen.classList.add('hidden');
+                if (appScreen) appScreen.classList.remove('hidden');
+                await carregarDadosProtegidos();
+            } else {
+                usuarioAtualUid = null;
+                if (loginScreen) loginScreen.classList.remove('hidden');
+                if (appScreen) appScreen.classList.add('hidden');
+            }
+        });
+    })
+    .catch((error) => {
+        console.error("Erro ao definir persistência:", error);
+    });
 
-// Vincula os eventos de clique dos botões de Login e Sair assim que a página carregar
+// Vincula os eventos de clique assim que a página carregar
 window.addEventListener('DOMContentLoaded', () => {
     const hoje = new Date();
     if (document.getElementById('data')) document.getElementById('data').valueAsDate = hoje;
     if (document.getElementById('filtroMes')) document.getElementById('filtroMes').value = String(hoje.getMonth() + 1).padStart(2, '0');
     if (document.getElementById('filtroAno')) document.getElementById('filtroAno').value = String(hoje.getFullYear());
 
-    // Ouvintes dos botões de entrar e sair
     const btnEntrar = document.getElementById('btn-entrar');
     if (btnEntrar) btnEntrar.addEventListener('click', fazerLogin);
 
@@ -63,14 +69,13 @@ async function carregarDadosProtegidos() {
         if (docSnapUser.exists() && (docSnapUser.data().listaHoras?.length > 0 || docSnapUser.data().listaSaldo?.length > 0)) {
             dados = docSnapUser.data();
         } else {
-            // Busca no usuario_principal antigo para migrar
             const docRefAntigo = doc(db, "usuarios", "usuario_principal");
             const docSnapAntigo = await getDoc(docRefAntigo);
 
             if (docSnapAntigo.exists()) {
                 dados = docSnapAntigo.data();
                 await setDoc(docRefUser, dados);
-                console.log("Dados antigos migrados com sucesso para sua conta protegida!");
+                console.log("Dados antigos migrados com sucesso!");
             } else {
                 dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
                 await setDoc(docRefUser, dados);
@@ -92,7 +97,6 @@ async function salvarDadosNuvem() {
     }
 }
 
-// Funções de Autenticação
 async function fazerLogin() {
     const email = document.getElementById('login-email').value;
     const senha = document.getElementById('login-senha').value;
@@ -115,7 +119,6 @@ function fazerLogout() {
     }
 }
 
-// Vincula as funções ao escopo global (window) para o HTML antigo funcionar perfeitamente
 window.switchTab = function(tabId) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
