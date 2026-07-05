@@ -1,20 +1,18 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Configuração do seu novo projeto Firebase (Atualizado conforme seu print)
+// Configuração do seu novo projeto Firebase (Validado)
 const firebaseConfig = {
-  apiKey: "AIzaSyCTcBDpnjpg9tYDNvpkoXyjskyxaO00-d0",
-  authDomain: "controle-de-horas-83afb.firebaseapp.com",
-  projectId: "controle-de-horas-83afb",
-  storageBucket: "controle-de-horas-83afb.firebasestorage.app",
-  messagingSenderId: "970403178442",
-  appId: "1:970403178442:web:ca235e1909a8a8deee1133"
+    apiKey: "AIzaSyCtCBDpnjpg9tYDNvpkoXyjskyxaO00-d0",
+    authDomain: "controle-de-horas-83afb.firebaseapp.com",
+    projectId: "controle-de-horas-83afb",
+    storageBucket: "controle-de-horas-83afb.firebasestorage.app",
+    messagingSenderId: "970403178442",
+    appId: "1:970403178442:web:ca23be1909a8a8deee1133"
 };
 
 // Inicializa Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Estado Local dos Dados
@@ -24,64 +22,25 @@ let dados = {
     listaSaldo: []
 };
 
-let usuarioAtual = null;
+// ID Fixo para usar direto sem precisar de tela de login
+const USUARIO_ID = "usuario_principal";
 const VALOR_HORA_FIXO = 7.50;
 
-// Elementos da Interface
-const loginScreen = document.getElementById('login-screen');
-const appScreen = document.getElementById('app-screen');
-
-// Inicializa datas e filtros padrões
+// Inicializa datas e filtros padrões ao carregar a página
 const hoje = new Date();
-document.getElementById('data').valueAsDate = hoje;
-document.getElementById('filtroMes').value = String(hoje.getMonth() + 1).padStart(2, '0');
-document.getElementById('filtroAno').value = String(hoje.getFullYear());
+if(document.getElementById('data')) document.getElementById('data').valueAsDate = hoje;
+if(document.getElementById('filtroMes')) document.getElementById('filtroMes').value = String(hoje.getMonth() + 1).padStart(2, '0');
+if(document.getElementById('filtroAno')) document.getElementById('filtroAno').value = String(hoje.getFullYear());
 
-// ==========================================
-// CONTROLE DE AUTENTICAÇÃO (LOGIN / LOGOUT)
-// ==========================================
-
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        usuarioAtual = user;
-        //loginScreen.style.display = 'none';
-        //appScreen.style.display = 'block';
-        await carregarDadosNuvem();
-    } else {
-        usuarioAtual = null;
-        //loginScreen.style.display = 'flex';
-        //appScreen.style.display = 'none';
-    }
-});
-
-//document.getElementById('btn-entrar').addEventListener('click', async () => {
-     //const email = document.getElementById('login-email').value;
-    //const senha = document.getElementById('login-senha').value;
-
-    //if (!email || !senha) {
-        //alert("Preencha todos os campos!");
-        //return;
-    //}
-
-   //try {
-        //await signInWithEmailAndPassword(auth, email, senha);
-    //} catch (error) {
-        //alert("Erro ao fazer login: Verifique suas credenciais.");
-    //}
-//});
-
-//document.getElementById('btn-sair').addEventListener('click', () => {
-    //signOut(auth);
-//});
-
+// Carrega os dados direto da nuvem assim que o script inicia
+carregarDadosNuvem();
 
 // ==========================================
 // BANCO DE DADOS (FIRESTORE)
 // ==========================================
 async function carregarDadosNuvem() {
-    if (!usuarioAtual) return;
     try {
-        const docRef = doc(db, "usuarios", usuarioAtual.uid);
+        const docRef = doc(db, "usuarios", USUARIO_ID);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -99,34 +58,36 @@ async function carregarDadosNuvem() {
 }
 
 async function salvarDadosNuvem() {
-    if (!usuarioAtual) return;
     try {
-        const docRef = doc(db, "usuarios", usuarioAtual.uid);
+        const docRef = doc(db, "usuarios", USUARIO_ID);
         await setDoc(docRef, dados);
     } catch (e) {
+        console.error("Erro ao salvar dados na nuvem:", e);
         alert("Erro ao salvar dados na nuvem! Verifique sua conexão.");
     }
 }
 
-
 // ==========================================
-// REGRAS DE NEGÓCIO E LÓGICA DO APP
+// FUNÇÕES GLOBAIS (Expostas para o HTML)
 // ==========================================
 
 window.switchTab = function(tabId) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     
-    document.getElementById(tabId).classList.add('active');
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) targetTab.classList.add('active');
+    
     if (event && event.currentTarget) {
         event.currentTarget.classList.add('active');
     }
 };
 
 // LANÇAR HORAS
-document.getElementById('btn-lancar-horas').addEventListener('click', async () => {
+window.lancarHoras = async function() {
     const dataInput = document.getElementById('data').value;
-    const horas = parseFloat(document.getElementById('horas').value);
+    const horasInput = document.getElementById('horas');
+    const horas = parseFloat(horasInput.value);
 
     if (!dataInput || isNaN(horas)) {
         alert("Por favor, informe a quantidade de horas!");
@@ -150,33 +111,35 @@ document.getElementById('btn-lancar-horas').addEventListener('click', async () =
     await salvarDadosNuvem();
     atualizarTelas();
     
-    document.getElementById('horas').value = '';
-});
+    horasInput.value = '';
+};
 
-async function excluirHora(id) {
+// EXCLUIR HORA
+window.excluirHora = async function(id) {
     const item = dados.listaHoras.find(h => h.id === id);
     if (item && item.fechado) {
-        alert("Este dia faz parte de um mês que já foi fechado e enviado para a conta da empresa.");
+        alert("Este dia faz parte de um período fechado.");
         return;
     }
 
-    if (confirm("Tem certeza que deseja apagar este lançamento de horas?")) {
+    if (confirm("Deseja apagar este lançamento?")) {
         dados.listaHoras = dados.listaHoras.filter(item => item.id !== id);
         await salvarDadosNuvem();
         atualizarTelas();
     }
-}
+};
 
 // FECHAR MÊS
-document.getElementById('btn-fechar-mes').addEventListener('click', async () => {
+window.fecharMes = async function() {
     const mesSelecionado = document.getElementById('filtroMes').value;
     const anoSelecionado = document.getElementById('filtroAno').value;
-    const nomeMes = document.getElementById('filtroMes').options[document.getElementById('filtroMes').selectedIndex].text;
+    const selectMes = document.getElementById('filtroMes');
+    const nomeMes = selectMes.options[selectMes.selectedIndex].text;
 
     const horasAbertasDoMes = dados.listaHoras.filter(h => h.mes === mesSelecionado && h.ano === anoSelecionado && !h.fechado);
 
     if (horasAbertasDoMes.length === 0) {
-        alert(`Não há novas horas em aberto para fechar em ${nomeMes}/${anoSelecionado}!`);
+        alert(`Não há horas em aberto para fechar em ${nomeMes}/${anoSelecionado}!`);
         return;
     }
 
@@ -205,12 +168,13 @@ document.getElementById('btn-fechar-mes').addEventListener('click', async () => 
 
     await salvarDadosNuvem();
     atualizarTelas();
-    alert(`Período de ${nomeMes} fechado com sucesso! R$ ${totalTrabalhado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} enviado ao saldo.`);
-});
+    alert(`Período fechado: R$ ${totalTrabalhado.toFixed(2)} enviado ao saldo.`);
+};
 
 // REGISTRAR PAGAMENTO
-document.getElementById('btn-confirmar-pagamento').addEventListener('click', async () => {
-    const valorPago = parseFloat(document.getElementById('valorPago').value);
+window.registrarPagamento = async function() {
+    const valorInput = document.getElementById('valorPago');
+    const valorPago = parseFloat(valorInput.value);
 
     if (isNaN(valorPago) || valorPago <= 0) {
         alert("Digite um valor válido!");
@@ -235,11 +199,11 @@ document.getElementById('btn-confirmar-pagamento').addEventListener('click', asy
 
     await salvarDadosNuvem();
     atualizarTelas();
-    document.getElementById('valorPago').value = '';
-});
+    valorInput.value = '';
+};
 
-async function excluirSaldo(id, valor, tipo) {
-    if (confirm("Atenção: Excluir este registro vai alterar o saldo total. Deseja continuar?")) {
+window.excluirSaldo = async function(id, valor, tipo) {
+    if (confirm("Alterar este registro mudará o saldo total. Continuar?")) {
         dados.saldoPendente -= valor; 
 
         if (tipo === 'fechamento') {
@@ -257,7 +221,7 @@ async function excluirSaldo(id, valor, tipo) {
         await salvarDadosNuvem();
         atualizarTelas();
     }
-}
+};
 
 function configurarToque(elemento, acaoDeletar) {
     let timerToque;
@@ -270,62 +234,66 @@ function configurarToque(elemento, acaoDeletar) {
 
 // ATUALIZAR INTERFACE
 window.atualizarTelas = function() {
-    const mesSelecionado = document.getElementById('filtroMes').value;
-    const anoSelecionado = document.getElementById('filtroAno').value;
+    const filtroMesEl = document.getElementById('filtroMes');
+    const filtroAnoEl = document.getElementById('filtroAno');
+    if (!filtroMesEl || !filtroAnoEl) return;
 
-    document.getElementById('saldoTotal').innerText = `R$ ${dados.saldoPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    
-    if (dados.saldoPendente <= 0) {
-        document.getElementById('saldoTotal').style.color = '#34d399'; 
-    } else {
-        document.getElementById('saldoTotal').style.color = '#f43f5e'; 
+    const mesSelecionado = filtroMesEl.value;
+    const anoSelecionado = filtroAnoEl.value;
+
+    const saldoTotalEl = document.getElementById('saldoTotal');
+    if (saldoTotalEl) {
+        saldoTotalEl.innerText = `R$ ${dados.saldoPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        saldoTotalEl.style.color = dados.saldoPendente <= 0 ? '#34d399' : '#f43f5e';
     }
 
     // TABELA 1: HORAS
     const tbodyHoras = document.getElementById('tabelaHoras');
-    tbodyHoras.innerHTML = '';
-    
-    const horasFiltradas = dados.listaHoras.filter(item => item.mes === mesSelecionado && item.ano === anoSelecionado);
-    const totalHorasNum = horasFiltradas.reduce((sum, item) => sum + item.horas, 0);
-    const totalValorMes = horasFiltradas.reduce((sum, item) => sum + item.total, 0);
-    
-    document.getElementById('resumoHoras').innerText = `${totalHorasNum.toFixed(1)}h`;
-    document.getElementById('resumoValor').innerText = `R$ ${totalValorMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-    horasFiltradas.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.className = 'clicavel';
-        if (item.fechado) tr.style.opacity = '0.6';
+    if (tbodyHoras) {
+        tbodyHoras.innerHTML = '';
+        const horasFiltradas = dados.listaHoras.filter(item => item.mes === mesSelecionado && item.ano === anoSelecionado);
+        const totalHorasNum = horasFiltradas.reduce((sum, item) => sum + item.horas, 0);
+        const totalValorMes = horasFiltradas.reduce((sum, item) => sum + item.total, 0);
         
-        const dataHorasFormatada = item.data.slice(0, 5);
+        if(document.getElementById('resumoHoras')) document.getElementById('resumoHoras').innerText = `${totalHorasNum.toFixed(1)}h`;
+        if(document.getElementById('resumoValor')) document.getElementById('resumoValor').innerText = `R$ ${totalValorMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-        tr.innerHTML = `
-            <td>${dataHorasFormatada} ${item.fechado ? '🔒' : ''}</td>
-            <td>${item.horas}h</td>
-            <td>R$ ${item.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-        `;
-        configurarToque(tr, () => excluirHora(item.id));
-        tbodyHoras.appendChild(tr);
-    });
+        horasFiltradas.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = 'clicavel';
+            if (item.fechado) tr.style.opacity = '0.6';
+            
+            tr.innerHTML = `
+                <td>${item.data.slice(0, 5)} ${item.fechado ? '🔒' : ''}</td>
+                <td>${item.horas}h</td>
+                <td>R$ ${item.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            `;
+            configurarToque(tr, () => window.excluirHora(item.id));
+            tbodyHoras.appendChild(tr);
+        });
+    }
 
-    // TABELA 2: EXTRATO (GLOBAL)
+    // TABELA 2: EXTRATO
     const tbodySaldo = document.getElementById('tabelaSaldo');
-    tbodySaldo.innerHTML = '';
-    
-    dados.listaSaldo.slice().reverse().forEach(item => {
-        const tr = document.createElement('tr');
-        tr.className = 'clicavel';
-        
-        const corValor = item.valor < 0 ? 'color: #f43f5e;' : 'color: #34d399;';
-        const sinal = item.valor < 0 ? '' : '+';
-        const dataFormatada = item.data.slice(0, 5);
-        
-        tr.innerHTML = `
-            <td>${dataFormatada}</td>
-            <td>${item.descricao}</td>
-            <td style="${corValor} font-weight: bold; text-align: right;">${sinal} R$ ${Math.abs(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-        `;
-        configurarToque(tr, () => excluirSaldo(item.id, item.valor, item.tipo));
-        tbodySaldo.appendChild(tr);
-    });
+    if (tbodySaldo) {
+        tbodySaldo.innerHTML = '';
+        dados.listaSaldo.slice().reverse().forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = 'clicavel';
+            const corValor = item.valor < 0 ? 'color: #f43f5e;' : 'color: #34d399;';
+            const sinal = item.valor < 0 ? '' : '+';
+            
+            tr.innerHTML = `
+                <td>${item.data.slice(0, 5)}</td>
+                <td>${item.descricao}</td>
+                <td style="${corValor} font-weight: bold; text-align: right;">${sinal} R$ ${Math.abs(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            `;
+            configurarToque(tr, () => window.excluirSaldo(item.id, item.valor, item.tipo));
+            tbodySaldo.appendChild(tr);
+        });
+    }
 };
+
+// Vincula os filtros para atualizar a tela ao mudar mês/ano
+if(document.getElementById('filtroMes')) document.getElementById('filtroMes').addEventListener('change', () => window.atualizarTelas());
+if(document.getElementById('filtroAno')) document.getElementById('filtroAno').addEventListener('change', () => window.atualizarTelas());
