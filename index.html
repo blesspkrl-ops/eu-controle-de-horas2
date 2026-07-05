@@ -21,18 +21,22 @@
         html, body {
             background-color: var(--bg-color);
             -webkit-text-size-adjust: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
         }
 
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            margin: 0; 
-            padding: 15px 10px; 
             color: var(--text-main); 
             -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
         }
 
         .container { 
-            max-width: 900px; 
+            width: 100%;
+            max-width: 500px; 
             margin: 0 auto; 
             background: var(--card-bg); 
             padding: 20px 15px; 
@@ -40,6 +44,32 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
             border: 1px solid var(--border);
             box-sizing: border-box;
+        }
+
+        /* TELA DE LOGIN AJUSTADA PARA IPHONE */
+        .login-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 360px;
+            background: var(--card-bg);
+            padding: 25px 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+
+        .login-group {
+            margin-bottom: 16px;
         }
 
         .tabs { 
@@ -228,38 +258,23 @@
             background-color: rgba(244, 63, 94, 0.15); 
         }
 
-        /* ESTILOS DA TELA DE LOGIN (BLOQUEIO) */
-        .login-screen {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 80vh;
+        .dashboard-container {
+            padding: 15px 10px;
+            box-sizing: border-box;
         }
-        .login-card {
-            width: 100%;
-            max-width: 400px;
-            background: var(--card-bg);
-            padding: 30px 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-        }
-        .login-group {
-            margin-bottom: 15px;
-        }
+
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<div id="login-screen" class="container login-screen">
+<div id="login-screen" class="login-wrapper">
     <div class="login-card">
-        <h2 style="text-align: center; color: var(--primary); margin-bottom: 25px;">Acesso Restrito</h2>
+        <h2 style="text-align: center; color: var(--primary); margin-bottom: 25px; font-weight: 800;">Acesso Restrito</h2>
         
         <div class="login-group">
             <label>E-mail:</label>
-            <input type="email" id="login-email" placeholder="seuemail@exemplo.com">
+            <input type="email" id="login-email" placeholder="seuemail@exemplo.com" autocomplete="email">
         </div>
         
         <div class="login-group">
@@ -271,104 +286,106 @@
     </div>
 </div>
 
-<div id="app-screen" class="container hidden">
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('carga-horaria')">⏱️ Horas</button>
-        <button class="tab-btn" onclick="switchTab('salario-saldo')">💰 Salário</button>
-    </div>
+<div id="app-screen" class="dashboard-container hidden">
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('carga-horaria')">⏱️ Horas</button>
+            <button class="tab-btn" onclick="switchTab('salario-saldo')">💰 Salário</button>
+        </div>
 
-    <div id="carga-horaria" class="tab-content active">
-        <h2>Horas de Serviço</h2>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Data:</label>
-                <input type="date" id="data">
-            </div>
-            <div class="form-group">
-                <label>Horas:</label>
-                <input type="number" id="horas" inputmode="decimal" step="0.1" placeholder="Ex: 8 ou 5.5">
-            </div>
-            <div class="form-group">
-                <label>Período:</label>
-                <div class="periodo-inputs">
-                    <select id="filtroMes" onchange="atualizarTelas()">
-                        <option value="01">Jan</option>
-                        <option value="02">Fev</option>
-                        <option value="03">Mar</option>
-                        <option value="04">Abr</option>
-                        <option value="05">Mai</option>
-                        <option value="06">Jun</option>
-                        <option value="07">Jul</option>
-                        <option value="08">Ago</option>
-                        <option value="09">Set</option>
-                        <option value="10">Out</option>
-                        <option value="11">Nov</option>
-                        <option value="12">Dez</option>
-                    </select>
-                    <select id="filtroAno" onchange="atualizarTelas()">
-                        <option value="2025">2025</option>
-                        <option value="2026" selected>2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                    </select>
+        <div id="carga-horaria" class="tab-content active">
+            <h2>Horas de Serviço</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Data:</label>
+                    <input type="date" id="data">
+                </div>
+                <div class="form-group">
+                    <label>Horas:</label>
+                    <input type="number" id="horas" inputmode="decimal" step="0.1" placeholder="Ex: 8 ou 5.5">
+                </div>
+                <div class="form-group">
+                    <label>Período:</label>
+                    <div class="periodo-inputs">
+                        <select id="filtroMes" onchange="atualizarTelas()">
+                            <option value="01">Jan</option>
+                            <option value="02">Fev</option>
+                            <option value="03">Mar</option>
+                            <option value="04">Abr</option>
+                            <option value="05">Mai</option>
+                            <option value="06">Jun</option>
+                            <option value="07">Jul</option>
+                            <option value="08">Ago</option>
+                            <option value="09">Set</option>
+                            <option value="10">Out</option>
+                            <option value="11">Nov</option>
+                            <option value="12">Dez</option>
+                        </select>
+                        <select id="filtroAno" onchange="atualizarTelas()">
+                            <option value="2025">2025</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                            <option value="2028">2028</option>
+                        </select>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="btn-group">
-            <button onclick="lancarHoras()" style="flex: 1;">➕ Lançar</button>
-            <button class="btn-danger" onclick="fecharMes()" style="flex: 1;">🔒 Fechar Mês</button>
-        </div>
-
-        <div class="resumo-mes-box">
-            <div class="resumo-item">Horas Totais: <span id="resumoHoras">0h</span></div>
-            <div class="resumo-item">Valor Total: <span id="resumoValor">R$ 0,00</span></div>
-        </div>
-
-        <h3>📅 Histórico</h3>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 40%;">Data</th>
-                        <th style="width: 30%;">Horas</th>
-                        <th style="width: 30%;">Total</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaHoras"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="salario-saldo" class="tab-content">
-        <h2>Controle de Salário</h2>
-        <div class="saldo-box">
-            <span>Sensação te deve:</span>
-            <span id="saldoTotal" class="saldo-valor">R$ 0,00</span>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Pagamento Recebido (R$):</label>
-                <input type="number" id="valorPago" inputmode="decimal" step="0.01" placeholder="Quanto você recebeu">
+            <div class="btn-group">
+                <button onclick="lancarHoras()" style="flex: 1;">➕ Lançar</button>
+                <button class="btn-danger" onclick="fecharMes()" style="flex: 1;">🔒 Fechar Mês</button>
             </div>
-            <button onclick="registrarPagamento()" style="width: 100%;">💸 Confirmar</button>
+
+            <div class="resumo-mes-box">
+                <div class="resumo-item">Horas Totais: <span id="resumoHoras">0h</span></div>
+                <div class="resumo-item">Valor Total: <span id="resumoValor">R$ 0,00</span></div>
+            </div>
+
+            <h3>📅 Histórico</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Data</th>
+                            <th style="width: 30%;">Horas</th>
+                            <th style="width: 30%;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaHoras"></tbody>
+                </table>
+            </div>
         </div>
 
-        <h3>📊 Extrato</h3>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 20%;">Data</th>
-                        <th style="width: 45%;">Descrição</th>
-                        <th style="width: 35%;">Valor</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaSaldo"></tbody>
-            </table>
-        </div>
+        <div id="salario-saldo" class="tab-content">
+            <h2>Controle de Salário</h2>
+            <div class="saldo-box">
+                <span>Sensação te deve:</span>
+                <span id="saldoTotal" class="saldo-valor">R$ 0,00</span>
+            </div>
 
-        <button id="btn-sair" class="btn-danger" style="width: 100%; margin-top: 30px; padding: 10px;">🚪 Sair do Aplicativo</button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pagamento Recebido (R$):</label>
+                    <input type="number" id="valorPago" inputmode="decimal" step="0.01" placeholder="Quanto você recebeu">
+                </div>
+                <button onclick="registrarPagamento()" style="width: 100%;">💸 Confirmar</button>
+            </div>
+
+            <h3>📊 Extrato</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Data</th>
+                            <th style="width: 45%;">Descrição</th>
+                            <th style="width: 35%;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaSaldo"></tbody>
+                </table>
+            </div>
+
+            <button id="btn-sair" class="btn-danger" style="width: 100%; margin-top: 30px; padding: 10px;">🚪 Sair do Aplicativo</button>
+        </div>
     </div>
 </div>
 
