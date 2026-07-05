@@ -142,7 +142,9 @@ window.fecharMes = async () => {
         data: dataFormatada,
         descricao: `Fechamento ${m}/${a}`,
         valor: valorFechamento,
-        tipo: 'credito'
+        tipo: 'credito',
+        refMes: m,
+        refAno: a
     });
 
     await salvarDados();
@@ -173,6 +175,30 @@ window.registrarPagamento = async () => {
     alert("Pagamento registrado!");
 };
 
+window.excluirExtrato = async (id) => {
+    if (!confirm("Deseja realmente apagar este lançamento do extrato?")) return;
+
+    const item = dados.listaSaldo.find(x => x.id === id);
+    if (!item) return;
+
+    if (item.tipo === 'credito') {
+        // Se for fechamento de mês, subtrai o valor do saldo e REABRE as horas daquele mês
+        dados.saldoPendente = parseFloat(dados.saldoPendente || 0) - item.valor;
+        dados.listaHoras.forEach(h => {
+            if (h.mes === item.refMes && h.ano === item.refAno) {
+                h.fechado = false;
+            }
+        });
+    } else if (item.tipo === 'debito') {
+        // Se for um pagamento recebido, devolve o valor ao saldo pendente
+        dados.saldoPendente = parseFloat(dados.saldoPendente || 0) + Math.abs(item.valor);
+    }
+
+    dados.listaSaldo = dados.listaSaldo.filter(x => x.id !== id);
+    await salvarDados();
+    window.atualizarTelas();
+};
+
 window.atualizarTelas = () => {
     if (!document.getElementById('saldoTotal')) return; 
 
@@ -181,7 +207,6 @@ window.atualizarTelas = () => {
     const m = document.getElementById('filtroMes').value;
     const a = document.getElementById('filtroAno').value;
     
-    // Horas em ordem CRESCENTE (do dia 01 em diante)
     const horasOrdenadas = ordenarPorDataCrescente([...dados.listaHoras]);
     const filtradas = horasOrdenadas.filter(i => i.mes === m && i.ano === a);
 
@@ -191,16 +216,16 @@ window.atualizarTelas = () => {
     document.getElementById('resumoHoras').innerText = `${totalH.toFixed(1)}h`;
     document.getElementById('resumoValor').innerText = `R$ ${totalV.toFixed(2)}`;
 
-    // Renderiza Histórico de Horas (Apenas dia e mês: DD/MM)
+    // Renderiza Histórico de Horas (Apenas DD/MM)
     const tbodyHoras = document.getElementById('tabelaHoras');
     tbodyHoras.innerHTML = '';
     filtradas.forEach(i => {
         const tr = document.createElement('tr');
         tr.className = 'clicavel';
-        const dataExibicao = i.data.slice(0, 5); // Recorta para ficar apenas DD/MM
-        tr.innerHTML = `<td>${dataExibicao}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
+        const dataExibicao = i.data.slice(0, 5);
+        tr.innerHTML = `<td>${dataExibicao} ${i.fechado ? '🔒' : ''}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
         tr.ondblclick = async () => {
-            if(i.fechado) return alert("Período já fechado! Não é possível apagar.");
+            if(i.fechado) return alert("Período já fechado! Exclua o fechamento no extrato primeiro se precisar alterar.");
             dados.listaHoras = dados.listaHoras.filter(x => x.id !== i.id);
             await salvarDados();
             window.atualizarTelas();
@@ -208,7 +233,7 @@ window.atualizarTelas = () => {
         tbodyHoras.appendChild(tr);
     });
 
-    // Renderiza Extrato de Saldo em ordem DECRESCENTE (Mais recente primeiro e DD/MM)
+    // Renderiza Extrato de Saldo (DECRESCENTE e apenas DD/MM)
     const tbodySaldo = document.getElementById('tabelaSaldo');
     if (tbodySaldo) {
         tbodySaldo.innerHTML = '';
@@ -218,14 +243,16 @@ window.atualizarTelas = () => {
             const partesY = y.data.split('/');
             const dataX = new Date(partesX[2], partesX[1] - 1, partesX[0]);
             const dataY = new Date(partesY[2], partesY[1] - 1, partesY[0]);
-            return dataY - dataX; // Mais recente primeiro
+            return dataY - dataX; 
         });
 
         saldoOrdenadoDecrescente.forEach(i => {
             const tr = document.createElement('tr');
+            tr.className = 'clicavel';
             const corValor = i.valor >= 0 ? "color: #34d399;" : "color: #f43f5e;";
-            const dataExibicao = i.data.slice(0, 5); // Recorta para ficar apenas DD/MM
+            const dataExibicao = i.data.slice(0, 5);
             tr.innerHTML = `<td>${dataExibicao}</td><td>${i.descricao}</td><td style="${corValor}">R$ ${Math.abs(i.valor).toFixed(2)}</td>`;
+            tr.ondblclick = () => window.excluirExtrato(i.id);
             tbodySaldo.appendChild(tr);
         });
     }
