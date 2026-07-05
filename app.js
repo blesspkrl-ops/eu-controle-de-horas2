@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// ⚠️ MUDAR: Cole aqui o SEU bloco de configuração real do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyCTcBDpnjpg9tYDNvpkoXyjskyxaO00-d0",
     authDomain: "controle-de-horas-83afb.firebaseapp.com",
@@ -42,7 +41,6 @@ async function carregarDados() {
     if (snap.exists()) {
         dados = snap.data();
     } else {
-        // Se for novo, tenta buscar do principal
         const snapAntigo = await getDoc(doc(db, "usuarios", "usuario_principal"));
         dados = snapAntigo.exists() ? snapAntigo.data() : { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
         await salvarDados();
@@ -54,6 +52,14 @@ async function salvarDados() {
     if (!usuarioAtualUid) return;
     await setDoc(doc(db, "usuarios", usuarioAtualUid), dados);
 }
+
+// EXPOSIÇÃO DAS FUNÇÕES PARA O HTML
+window.switchTab = function(tabId) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+};
 
 window.fazerLogin = async () => {
     try {
@@ -84,27 +90,25 @@ window.lancarHoras = async () => {
 };
 
 window.atualizarTelas = () => {
-    // Atualiza Saldo
+    if (!document.getElementById('saldoTotal')) return; 
+
     document.getElementById('saldoTotal').innerText = `R$ ${parseFloat(dados.saldoPendente || 0).toFixed(2)}`;
     
-    // Filtros
     const m = document.getElementById('filtroMes').value;
     const a = document.getElementById('filtroAno').value;
     const filtradas = dados.listaHoras.filter(i => i.mes === m && i.ano === a);
 
-    // Cálculos garantindo que são números
     const totalH = filtradas.reduce((s, i) => s + parseFloat(i.horas || 0), 0);
     const totalV = filtradas.reduce((s, i) => s + parseFloat(i.total || 0), 0);
 
-    // Exibe no HTML
     document.getElementById('resumoHoras').innerText = `${totalH.toFixed(1)}h`;
     document.getElementById('resumoValor').innerText = `R$ ${totalV.toFixed(2)}`;
 
-    // Tabela
     const tbody = document.getElementById('tabelaHoras');
     tbody.innerHTML = '';
     filtradas.forEach(i => {
         const tr = document.createElement('tr');
+        tr.className = 'clicavel';
         tr.innerHTML = `<td>${i.data}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
         tr.ondblclick = async () => {
             if(i.fechado) return alert("Período fechado!");
