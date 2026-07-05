@@ -19,7 +19,7 @@ let dados = { saldoPendente: 0, listaHoras: [], listaSaldo: [] };
 let usuarioAtualUid = null;
 const VALOR_HORA_FIXO = 7.50;
 
-function configurarDataAtual() {
+function configuringDataAtual() {
     const hoje = new Date();
     const ano = hoje.getFullYear();
     const mes = String(hoje.getMonth() + 1).padStart(2, '0');
@@ -36,7 +36,6 @@ function configurarDataAtual() {
     }
 }
 
-// Configura a persistência da sessão antes de verificar o estado do usuário
 setPersistence(auth, browserSessionPersistence)
     .then(() => {
         onAuthStateChanged(auth, async (user) => {
@@ -46,7 +45,7 @@ setPersistence(auth, browserSessionPersistence)
                 usuarioAtualUid = user.uid;
                 if (loginScreen) loginScreen.classList.add('hidden');
                 if (appScreen) appScreen.classList.remove('hidden');
-                configurarDataAtual();
+                configuringDataAtual();
                 await carregarDados();
             } else {
                 if (loginScreen) loginScreen.classList.remove('hidden');
@@ -79,13 +78,14 @@ async function salvarDados() {
     await setDoc(doc(db, "usuarios", usuarioAtualUid), dados);
 }
 
-// Função de apoio para ordenar as datas corretamente
-function obterObjetoData(stringData) {
-    if (!stringData) return new Date(0);
+// Converte string DD/MM/AAAA para número AAAAMMDD para ordenação das horas
+function converterParaNumeroData(stringData) {
+    if (!stringData) return 0;
     const partes = stringData.split('/');
-    // Se a string já estiver cortada como DD/MM, assume o ano atual para ordenação interna
+    const dia = partes[0].padStart(2, '0');
+    const mes = partes[1].padStart(2, '0');
     const ano = partes[2] || new Date().getFullYear();
-    return new Date(ano, partes[1] - 1, partes[0]);
+    return parseInt(`${ano}${mes}${dia}`, 10);
 }
 
 // EXPOSIÇÃO DAS FUNÇÕES PARA O HTML
@@ -219,9 +219,9 @@ window.atualizarTelas = () => {
     const m = document.getElementById('filtroMes').value;
     const a = document.getElementById('filtroAno').value;
     
-    // 1. HORAS: Filtra e ordena de forma CRESCENTE (Do dia 01 em diante)
+    // 1. HORAS: Ordena de forma CRESCENTE (Do dia 01 para frente)
     const filtradasHoras = dados.listaHoras.filter(i => i.mes === m && i.ano === a);
-    filtradasHoras.sort((x, y) => obterObjetoData(x.data) - obterObjetoData(y.data));
+    filtradasHoras.sort((x, y) => converterParaNumeroData(x.data) - converterParaNumeroData(y.data));
 
     const totalH = filtradasHoras.reduce((s, i) => s + parseFloat(i.horas || 0), 0);
     const totalV = filtradasHoras.reduce((s, i) => s + parseFloat(i.total || 0), 0);
@@ -229,14 +229,14 @@ window.atualizarTelas = () => {
     document.getElementById('resumoHoras').innerText = `${totalH.toFixed(1)}h`;
     document.getElementById('resumoValor').innerText = `R$ ${totalV.toFixed(2)}`;
 
-    // Renderiza Histórico de Horas (Apenas DD/MM no layout)
+    // Renderiza Histórico de Horas (Apenas DD/MM)
     const tbodyHoras = document.getElementById('tabelaHoras');
     if (tbodyHoras) {
         tbodyHoras.innerHTML = '';
         filtradasHoras.forEach(i => {
             const tr = document.createElement('tr');
             tr.className = 'clicavel';
-            const exibicaoData = i.data.substring(0, 5); // Recorta para exibir apenas "DD/MM"
+            const exibicaoData = i.data.substring(0, 5); 
             tr.innerHTML = `<td>${exibicaoData} ${i.fechado ? '🔒' : ''}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
             tr.ondblclick = async () => {
                 if(i.fechado) return alert("Período já fechado! Exclua o fechamento no extrato primeiro.");
@@ -248,19 +248,20 @@ window.atualizarTelas = () => {
         });
     }
 
-    // 2. EXTRATO SALDO: Ordena de forma DECRESCENTE (Mais recente no TOPO)
+    // 2. EXTRATO SALDO: Ordena por ID decrescente (ÚLTIMO CLIQUE / MAIS RECENTE NO TOPO)
     const tbodySaldo = document.getElementById('tabelaSaldo');
     if (tbodySaldo) {
         tbodySaldo.innerHTML = '';
         
         const extratoOrdenado = [...dados.listaSaldo];
-        extratoOrdenado.sort((x, y) => obterObjetoData(y.data) - obterObjetoData(x.data)); // DECRESCENTE
+        // Ordena estritamente pelo ID (timestamp de criação), garantindo que a última ação fique no topo
+        extratoOrdenado.sort((x, y) => y.id - x.id); 
 
         extratoOrdenado.forEach(i => {
             const tr = document.createElement('tr');
             tr.className = 'clicavel';
             const corValor = i.valor >= 0 ? "color: #34d399;" : "color: #f43f5e;";
-            const exibicaoData = i.data.substring(0, 5); // Recorta para exibir apenas "DD/MM"
+            const exibicaoData = i.data.substring(0, 5); 
             tr.innerHTML = `<td>${exibicaoData}</td><td>${i.descricao}</td><td style="${corValor}">R$ ${Math.abs(i.valor).toFixed(2)}</td>`;
             tr.ondblclick = () => window.excluirExtrato(i.id);
             tbodySaldo.appendChild(tr);
