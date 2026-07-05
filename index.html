@@ -239,18 +239,18 @@
 
     <!-- ABA 1: CARGA HORÁRIA -->
     <div id="carga-horaria" class="tab-content active">
-        <h2>Lançar Horas de Serviço</h2>
+        <h2>Horas de Serviço</h2>
         <div class="form-row">
             <div class="form-group">
-                <label>Data de Trabalho:</label>
+                <label>Data:</label>
                 <input type="date" id="data">
             </div>
             <div class="form-group">
-                <label>Horas Trabalhadas:</label>
+                <label>Horas:</label>
                 <input type="number" id="horas" inputmode="decimal" step="0.1" placeholder="Ex: 8 ou 5.5">
             </div>
             <div class="form-group">
-                <label>Filtrar Período:</label>
+                <label>Período:</label>
                 <div class="periodo-inputs">
                     <select id="filtroMes" onchange="atualizarTelas()">
                         <option value="01">Jan</option>
@@ -281,11 +281,11 @@
         </div>
 
         <div class="resumo-mes-box">
-            <div class="resumo-item">Total Horas: <span id="resumoHoras">0h</span></div>
-            <div class="resumo-item">Total Período: <span id="resumoValor">R$ 0,00</span></div>
+            <div class="resumo-item">Horas Totais: <span id="resumoHoras">0h</span></div>
+            <div class="resumo-item">Valor Total: <span id="resumoValor">R$ 0,00</span></div>
         </div>
 
-        <h3>📅 Histórico (Segure o dedo na linha para apagar)</h3>
+        <h3>📅 Histórico</h3>
         <div class="table-responsive">
             <table>
                 <thead>
@@ -302,21 +302,21 @@
 
     <!-- ABA 2: SALÁRIO E SALDO -->
     <div id="salario-saldo" class="tab-content">
-        <h2>Controle de Saldo Devedor</h2>
+        <h2>Controle de Salário</h2>
         <div class="saldo-box">
-            <span>A Empresa te deve:</span>
+            <span>Sensaçao te deve:</span>
             <span id="saldoTotal" class="saldo-valor">R$ 0,00</span>
         </div>
 
         <div class="form-row">
             <div class="form-group">
-                <label>Registrar Pagamento Recebido (R$):</label>
+                <label>Pagamento Recebido (R$):</label>
                 <input type="number" id="valorPago" inputmode="decimal" step="0.01" placeholder="Quanto você recebeu">
             </div>
-            <button onclick="registrarPagamento()" style="width: 100%;">💸 Confirmar Recebimento</button>
+            <button onclick="registrarPagamento()" style="width: 100%;">💸 Confirmar</button>
         </div>
 
-        <h3>📊 Extrato Geral Completo (Segure o dedo na linha para apagar)</h3>
+        <h3>📊 Extrato</h3>
         <div class="table-responsive">
             <table>
                 <thead>

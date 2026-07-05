@@ -86,7 +86,6 @@ function fecharMes() {
     const diaReg = String(dataHoje.getDate()).padStart(2, '0');
     const mesReg = String(dataHoje.getMonth() + 1).padStart(2, '0');
 
-    // ALTERADO: Data salva agora apenas como DD/MM para o extrato de salário
     dados.listaSaldo.push({
         id: Date.now(),
         data: `${diaReg}/${mesReg}`,
@@ -105,7 +104,9 @@ function fecharMes() {
 
     salvarDados();
     atualizarTelas();
-    alert(`Período de ${nomeMes} fechado com sucesso! R$ ${totalTrabalhado.toFixed(2)} enviados para o Saldo.`);
+    
+    // ALTERADO: Mensagem do alerta agora exibe o valor formatado com pontos e vírgulas
+    alert(`Período de ${nomeMes} fechado com sucesso! R$ ${totalTrabalhado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} enviados para o Saldo.`);
 }
 
 // REGISTRAR PAGAMENTO
@@ -123,7 +124,6 @@ function registrarPagamento() {
 
     dados.saldoPendente -= valorPago;
 
-    // ALTERADO: Data salva agora apenas como DD/MM para liberar espaço
     dados.listaSaldo.push({
         id: Date.now(),
         data: `${diaReg}/${mesReg}`,
@@ -180,7 +180,8 @@ function atualizarTelas() {
     const mesSelecionado = document.getElementById('filtroMes').value;
     const anoSelecionado = document.getElementById('filtroAno').value;
 
-    document.getElementById('saldoTotal').innerText = `R$ ${dados.saldoPendente.toFixed(2)}`;
+    // ALTERADO: Formatação do Saldo Devedor do topo (Ex: 1.000,00)
+    document.getElementById('saldoTotal').innerText = `R$ ${dados.saldoPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     
     if (dados.saldoPendente <= 0) {
         document.getElementById('saldoTotal').style.color = '#34d399'; 
@@ -194,11 +195,13 @@ function atualizarTelas() {
     
     const horasFiltradas = dados.listaHoras.filter(item => item.mes === mesSelecionado && item.ano === anoSelecionado);
     
-    const totalHorasMes = horasFiltradas.reduce((sum, item) => sum + item.horas, 0);
+    const totalHorasNum = horasFiltradas.reduce((sum, item) => sum + item.horas, 0);
     const totalValorMes = horasFiltradas.reduce((sum, item) => sum + item.total, 0);
     
-    document.getElementById('resumoHoras').innerText = `${totalHorasMes.toFixed(1)}h`;
-    document.getElementById('resumoValor').innerText = `R$ ${totalValorMes.toFixed(2)}`;
+    document.getElementById('resumoHoras').innerText = `${totalHorasNum.toFixed(1)}h`;
+    
+    // ALTERADO: Formatação do Resumo de Carga Horária (Ex: R$ 1.000,00)
+    document.getElementById('resumoValor').innerText = `R$ ${totalValorMes.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     horasFiltradas.forEach(item => {
         const tr = document.createElement('tr');
@@ -206,10 +209,14 @@ function atualizarTelas() {
         if (item.fechado) {
             tr.style.opacity = '0.6';
         }
+        
+        const dataHorasFormatada = item.data.slice(0, 5);
+
+        // ALTERADO: Formatação de cada linha da tabela de horas (Ex: R$ 1.000,00)
         tr.innerHTML = `
-            <td>${item.data} ${item.fechado ? '🔒' : ''}</td>
+            <td>${dataHorasFormatada} ${item.fechado ? '🔒' : ''}</td>
             <td>${item.horas}h</td>
-            <td>R$ ${item.total.toFixed(2)}</td>
+            <td>R$ ${item.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         `;
         configurarToque(tr, () => excluirHora(item.id));
         tbodyHoras.appendChild(tr);
@@ -226,11 +233,13 @@ function atualizarTelas() {
         const corValor = item.valor < 0 ? 'color: #f43f5e;' : 'color: #34d399;';
         const sinal = item.valor < 0 ? '' : '+';
         
-        // ALTERADO: item.data agora renderiza apenas o DD/MM reduzido que guardamos
+        const dataFormatada = item.data.slice(0, 5);
+        
+        // ALTERADO: Formatação do Extrato Geral de Salário (Ex: R$ 1.000,00)
         tr.innerHTML = `
-            <td>${item.data}</td>
+            <td>${dataFormatada}</td>
             <td>${item.descricao}</td>
-            <td style="${corValor} font-weight: bold; text-align: right;">${sinal} R$ ${Math.abs(item.valor).toFixed(2)}</td>
+            <td style="${corValor} font-weight: bold; text-align: right;">${sinal} R$ ${Math.abs(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         `;
         configurarToque(tr, () => excluirSaldo(item.id, item.valor, item.tipo));
         tbodySaldo.appendChild(tr);
