@@ -36,22 +36,27 @@ function configurarDataAtual() {
     }
 }
 
-setPersistence(auth, browserSessionPersistence).then(() => {
-    onAuthStateChanged(auth, async (user) => {
-        const loginScreen = document.getElementById('login-screen');
-        const appScreen = document.getElementById('app-screen');
-        if (user) {
-            usuarioAtualUid = user.uid;
-            loginScreen.classList.add('hidden');
-            appScreen.classList.remove('hidden');
-            configurarDataAtual();
-            await carregarDados();
-        } else {
-            loginScreen.classList.remove('hidden');
-            appScreen.classList.add('hidden');
-        }
+// Configura a persistência da sessão antes de verificar o estado do usuário
+setPersistence(auth, browserSessionPersistence)
+    .then(() => {
+        onAuthStateChanged(auth, async (user) => {
+            const loginScreen = document.getElementById('login-screen');
+            const appScreen = document.getElementById('app-screen');
+            if (user) {
+                usuarioAtualUid = user.uid;
+                if (loginScreen) loginScreen.classList.add('hidden');
+                if (appScreen) appScreen.classList.remove('hidden');
+                configurarDataAtual();
+                await carregarDados();
+            } else {
+                if (loginScreen) loginScreen.classList.remove('hidden');
+                if (appScreen) appScreen.classList.add('hidden');
+            }
+        });
+    })
+    .catch((error) => {
+        console.error("Erro ao configurar persistência:", error);
     });
-});
 
 async function carregarDados() {
     const docRef = doc(db, "usuarios", usuarioAtualUid);
@@ -74,35 +79,48 @@ async function salvarDados() {
     await setDoc(doc(db, "usuarios", usuarioAtualUid), dados);
 }
 
-// Converte a string DD/MM/AAAA em um objeto Date real para ordenações precisas
+// Função de apoio para ordenar as datas corretamente
 function obterObjetoData(stringData) {
+    if (!stringData) return new Date(0);
     const partes = stringData.split('/');
-    return new Date(partes[2], partes[1] - 1, partes[0]);
+    // Se a string já estiver cortada como DD/MM, assume o ano atual para ordenação interna
+    const ano = partes[2] || new Date().getFullYear();
+    return new Date(ano, partes[1] - 1, partes[0]);
 }
 
 // EXPOSIÇÃO DAS FUNÇÕES PARA O HTML
 window.switchTab = function(tabId) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
+    
+    const abaDestino = document.getElementById(tabId);
+    if (abaDestino) {
+        abaDestino.classList.add('active');
+    }
+    
+    if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
     }
 };
 
 window.fazerLogin = async () => {
+    const email = document.getElementById('login-email').value;
+    const senha = document.getElementById('login-senha').value;
     try {
-        await signInWithEmailAndPassword(auth, document.getElementById('login-email').value, document.getElementById('login-senha').value);
-    } catch (e) { alert("Erro de login!"); }
+        await signInWithEmailAndPassword(auth, email, senha);
+    } catch (e) { 
+        alert("Erro de login!"); 
+    }
 };
 
 window.fazerLogout = () => signOut(auth);
 
 window.lancarHoras = async () => {
-    const d = document.getElementById('data').value.split('-');
+    const dataCampo = document.getElementById('data').value;
     const h = parseFloat(document.getElementById('horas').value);
-    if (!d[0] || isNaN(h)) return alert("Preencha os campos!");
+    if (!dataCampo || isNaN(h)) return alert("Preencha os campos!");
 
+    const d = dataCampo.split('-');
     dados.listaHoras.push({
         id: Date.now(),
         data: `${d[2]}/${d[1]}/${d[0]}`,
@@ -201,9 +219,9 @@ window.atualizarTelas = () => {
     const m = document.getElementById('filtroMes').value;
     const a = document.getElementById('filtroAno').value;
     
-    // 1. HORAS: Filtra e ordena de forma CRESCENTE (Dia 01 para frente)
+    // 1. HORAS: Filtra e ordena de forma CRESCENTE (Do dia 01 em diante)
     const filtradasHoras = dados.listaHoras.filter(i => i.mes === m && i.ano === a);
-    filtradasHoras.sort((x, y) => obtenerObjetoData(x.data) - obtenerObjetoData(y.data));
+    filtradasHoras.sort((x, y) => obterObjetoData(x.data) - obterObjetoData(y.data));
 
     const totalH = filtradasHoras.reduce((s, i) => s + parseFloat(i.horas || 0), 0);
     const totalV = filtradasHoras.reduce((s, i) => s + parseFloat(i.total || 0), 0);
@@ -211,22 +229,24 @@ window.atualizarTelas = () => {
     document.getElementById('resumoHoras').innerText = `${totalH.toFixed(1)}h`;
     document.getElementById('resumoValor').innerText = `R$ ${totalV.toFixed(2)}`;
 
-    // Renderiza Histórico de Horas (Apenas DD/MM)
+    // Renderiza Histórico de Horas (Apenas DD/MM no layout)
     const tbodyHoras = document.getElementById('tabelaHoras');
-    tbodyHoras.innerHTML = '';
-    filtradasHoras.forEach(i => {
-        const tr = document.createElement('tr');
-        tr.className = 'clicavel';
-        const exibicaoData = i.data.substring(0, 5); // Pega apenas "DD/MM"
-        tr.innerHTML = `<td>${exibicaoData} ${i.fechado ? '🔒' : ''}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
-        tr.ondblclick = async () => {
-            if(i.fechado) return alert("Período já fechado! Exclua o fechamento no extrato primeiro.");
-            dados.listaHoras = dados.listaHoras.filter(x => x.id !== i.id);
-            await salvarDados();
-            window.atualizarTelas();
-        };
-        tbodyHoras.appendChild(tr);
-    });
+    if (tbodyHoras) {
+        tbodyHoras.innerHTML = '';
+        filtradasHoras.forEach(i => {
+            const tr = document.createElement('tr');
+            tr.className = 'clicavel';
+            const exibicaoData = i.data.substring(0, 5); // Recorta para exibir apenas "DD/MM"
+            tr.innerHTML = `<td>${exibicaoData} ${i.fechado ? '🔒' : ''}</td><td>${i.horas}h</td><td>R$ ${parseFloat(i.total).toFixed(2)}</td>`;
+            tr.ondblclick = async () => {
+                if(i.fechado) return alert("Período já fechado! Exclua o fechamento no extrato primeiro.");
+                dados.listaHoras = dados.listaHoras.filter(x => x.id !== i.id);
+                await salvarDados();
+                window.atualizarTelas();
+            };
+            tbodyHoras.appendChild(tr);
+        });
+    }
 
     // 2. EXTRATO SALDO: Ordena de forma DECRESCENTE (Mais recente no TOPO)
     const tbodySaldo = document.getElementById('tabelaSaldo');
@@ -234,13 +254,13 @@ window.atualizarTelas = () => {
         tbodySaldo.innerHTML = '';
         
         const extratoOrdenado = [...dados.listaSaldo];
-        extratoOrdenado.sort((x, y) => obtenerObjetoData(y.data) - obtenerObjetoData(x.data)); // DECRESCENTE
+        extratoOrdenado.sort((x, y) => obterObjetoData(y.data) - obterObjetoData(x.data)); // DECRESCENTE
 
         extratoOrdenado.forEach(i => {
             const tr = document.createElement('tr');
             tr.className = 'clicavel';
             const corValor = i.valor >= 0 ? "color: #34d399;" : "color: #f43f5e;";
-            const exibicaoData = i.data.substring(0, 5); // Pega apenas "DD/MM"
+            const exibicaoData = i.data.substring(0, 5); // Recorta para exibir apenas "DD/MM"
             tr.innerHTML = `<td>${exibicaoData}</td><td>${i.descricao}</td><td style="${corValor}">R$ ${Math.abs(i.valor).toFixed(2)}</td>`;
             tr.ondblclick = () => window.excluirExtrato(i.id);
             tbodySaldo.appendChild(tr);
@@ -249,8 +269,16 @@ window.atualizarTelas = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('btn-entrar').addEventListener('click', window.fazerLogin);
-    document.getElementById('btn-sair').addEventListener('click', window.fazerLogout);
-    document.getElementById('filtroMes').addEventListener('change', window.atualizarTelas);
-    document.getElementById('filtroAno').addEventListener('change', window.atualizarTelas);
+    if (document.getElementById('btn-entrar')) {
+        document.getElementById('btn-entrar').addEventListener('click', window.fazerLogin);
+    }
+    if (document.getElementById('btn-sair')) {
+        document.getElementById('btn-sair').addEventListener('click', window.fazerLogout);
+    }
+    if (document.getElementById('filtroMes')) {
+        document.getElementById('filtroMes').addEventListener('change', window.atualizarTelas);
+    }
+    if (document.getElementById('filtroAno')) {
+        document.getElementById('filtroAno').addEventListener('change', window.atualizarTelas);
+    }
 });
